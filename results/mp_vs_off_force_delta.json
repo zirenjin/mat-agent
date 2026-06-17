@@ -1,0 +1,65 @@
+{
+  "analysis": "MP-0 vs OFF23 direct force comparison on rMD17 aspirin (model-vs-model, not vs ref)",
+  "n_structures": 1000,
+  "n_atoms_per_struct": 21,
+  "molecule_composition": {
+    "H": 8,
+    "C": 9,
+    "O": 4
+  },
+  "convention": "component-wise over all structs*atoms*xyz; meV/A; delta = F_MP - F_OFF",
+  "delta_F_MP_minus_F_OFF": {
+    "overall": {
+      "mae_meV_per_ang": 372.9908,
+      "rmse_meV_per_ang": 511.6598,
+      "mean_signed_meV_per_ang": -0.0,
+      "n_components": 63000
+    },
+    "by_element": {
+      "H": {
+        "n_atoms_per_struct": 8,
+        "n_atoms_total": 8000,
+        "mae_meV_per_ang": 208.5436,
+        "rmse_meV_per_ang": 250.9767,
+        "mean_signed_meV_per_ang": -3.4721,
+        "n_components": 24000
+      },
+      "C": {
+        "n_atoms_per_struct": 9,
+        "n_atoms_total": 9000,
+        "mae_meV_per_ang": 412.8176,
+        "rmse_meV_per_ang": 542.9571,
+        "mean_signed_meV_per_ang": 15.3142,
+        "n_components": 27000
+      },
+      "O": {
+        "n_atoms_per_struct": 4,
+        "n_atoms_total": 4000,
+        "mae_meV_per_ang": 612.275,
+        "rmse_meV_per_ang": 764.9467,
+        "mean_signed_meV_per_ang": -27.5127,
+        "n_components": 12000
+      }
+    }
+  },
+  "sanity_vs_ref": {
+    "MP_force_rmse_meV_per_ang": 337.5078,
+    "MP_force_mae_meV_per_ang": 256.0815,
+    "OFF_force_rmse_meV_per_ang": 447.1513,
+    "OFF_force_mae_meV_per_ang": 355.8752,
+    "note": "should reproduce the verdict JSONs (MP 337.5 / OFF 447.2)"
+  },
+  "true_force_scale_rms_meV_per_ang": 1264.24,
+  "hypothesis_check": {
+    "question": "Is RMSE(F_MP - F_OFF) close to 447-337 ~ 110 meV/A?",
+    "actual_delta_rmse_meV_per_ang": 511.6598,
+    "bound_collinear_errors_r1": 109.64,
+    "bound_orthogonal_extra": 293.31,
+    "bound_independent_errors_r0": 560.23,
+    "closest_regime": "~sqrt(mp^2+off^2) (errors independent, r_e=0)",
+    "pearson_r_error_MP_vs_OFF": 0.1725,
+    "pearson_r_force_MP_vs_OFF": 0.9232,
+    "answer_close_to_110": false,
+    "interpretation": "RMSE(delta)=511.7 meV/A is NOT close to the naive 447-337=109.6. RMSEs don't subtract linearly: the collinear limit is 109.6, the orthogonal-extra limit sqrt(off^2-mp^2)=293.3, the independent limit sqrt(mp^2+off^2)=560.2. Actual is closest to '~sqrt(mp^2+off^2) (errors independent, r_e=0)'. Error correlation r(e_MP,e_OFF)=0.172, raw-force correlation r(F_MP,F_OFF)=0.923. The MP-OFF force difference (512 meV/A, ~40% of the 1264 meV/A force scale) is a real, structured PBE-vs-wB97M-D3 difference, not a small clean offset."
+  }
+}

@@ -1,0 +1,48 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=Etc/UTC
+
+# Step 1: Install ca-certificates FIRST from default HTTP repos, then switch to HTTPS mirrors
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    sed -i 's|http://archive.ubuntu.com|https://mirrors.aliyun.com|g; s|http://security.ubuntu.com|https://mirrors.aliyun.com|g' /etc/apt/sources.list && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+        python3.11 python3.11-dev python3.11-venv python3-pip \
+        git curl build-essential gnupg wget \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1
+
+# CUDA 12.1 from NVIDIA China CDN
+RUN wget -q https://developer.download.nvidia.cn/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb -O /tmp/cuda.deb && \
+    dpkg -i /tmp/cuda.deb && rm /tmp/cuda.deb && \
+    sed -i 's|developer.download.nvidia.com|developer.download.nvidia.cn|g' /etc/apt/sources.list.d/cuda-*.list 2>/dev/null || true && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends cuda-libraries-12-1 libcudnn8 && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV CUDA_HOME=/usr/local/cuda
+ENV PATH=${CUDA_HOME}/bin:${PATH}
+ENV LD_LIBRARY_PATH=${CUDA_HOME}/lib64:${LD_LIBRARY_PATH}
+ENV CUDA_VERSION=12.1
+ENV NVIDIA_VISIBLE_DEVICES=all
+ENV NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+# Python deps via tsinghua mirror
+RUN pip3 install --no-cache-dir \
+        -i https://pypi.tuna.tsinghua.edu.cn/simple \
+        --trusted-host pypi.tuna.tsinghua.edu.cn \
+        "ase>=3.22" "numpy>=1.23" "scipy"
+
+RUN mkdir -p /work /opt/mat-agent-tools
+
+COPY tools/ase_conventions.py /opt/mat-agent-tools/
+
+ENV PYTHONPATH=/opt/mat-agent-tools
+ENV HF_ENDPOINT=https://hf-mirror.com
+
+WORKDIR /work
+ENTRYPOINT []
+CMD ["/bin/bash"]

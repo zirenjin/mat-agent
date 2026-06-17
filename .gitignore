@@ -1,0 +1,61 @@
+# Python/cache
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local/editor/runtime state
+.claude/settings.local.json
+.time_logger_state.json
+.tmp/
+.cache/
+mnt/
+envs/
+
+# Raw data and large downloaded assets
+datasets/raw/
+data/raw/
+*.csv.gz
+*.extxyz.zip
+uma_ckpts/
+models/dpa/
+models/dpa4/
+models/**/*.pt
+models/**/*.pth
+models/**/*.model
+models/**/.cache/
+
+# Generated datasets that can be rebuilt
+datasets/prepared/*/dp_*/
+data/**/dp_*/
+
+# Experiment artifacts
+experiments/checkpoints/
+experiments/predictions/
+experiments/time_logs/
+runs/
+results/time_logs/
+results/**/*.npz
+results/**/*.xyz
+
+# Keep small verdict JSONs visible when results is versioned
+!experiments/verdicts/
+!experiments/verdicts/**/*.json
+!results/*verdict*.json
+
+# Datasets, including small prepared samples
+data/**/*.extxyz
+data/**/*.xyz
+data/**/*.csv
+data/**/*.npz
+datasets/**/*.extxyz
+datasets/**/*.xyz
+datasets/**/*.csv
+datasets/**/*.npz
+
+# Keep lightweight dataset metadata if useful
+data/**/manifest.json
+datasets/**/manifest.json
+datasets/prep_scripts/
+datasets/prep_scripts/**

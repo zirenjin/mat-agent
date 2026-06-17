@@ -1,0 +1,49 @@
+# Conda environments (huge, not needed in Docker images)
+envs/
+
+# Python cache
+__pycache__/
+*.pyc
+.cache/
+
+# Build artifacts
+.mypy_cache/
+*.egg-info/
+
+# Data files (mounted at runtime, not baked into images)
+data/
+datasets/
+
+# Checkpoints (mounted at runtime)
+models/dpa/
+models/dpa4/
+uma_ckpts/
+
+# Run outputs
+results/
+runs/
+
+# Temporary files
+.tmp/
+tmp/
+
+# Git
+.git/
+
+# IDE / editor
+.vscode/
+.idea/
+
+# Misc large files
+*.csv.gz
+*.zip
+*.tar
+*.tar.bz2
+
+# Docker
+Dockerfile*
+.dockerignore
+
+# Conda
+*.conda
+miniconda3/

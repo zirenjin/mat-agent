@@ -1,0 +1,110 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MLIP Agent Eval Time Log",
+  "description": "Time log produced by one execution of one SOP (e.g., MACE inference by human).",
+  "type": "object",
+  "required": ["experiment_id", "runner", "model", "task", "started_at", "finished_at", "steps", "success"],
+  "properties": {
+    "experiment_id": {
+      "type": "string",
+      "description": "Format: {model}_{task}_{runner}_{run_id}. E.g., mace_inference_human_run1"
+    },
+    "runner": {
+      "type": "string",
+      "enum": ["human", "agent"]
+    },
+    "agent_info": {
+      "type": "object",
+      "description": "Only populated when runner=agent",
+      "properties": {
+        "agent_name": { "type": "string", "description": "e.g., claude-code-opus-4.8" },
+        "agent_version": { "type": "string" },
+        "context_strategy": { "type": "string", "description": "single-context | per-task" }
+      }
+    },
+    "model": {
+      "type": "string",
+      "enum": ["mace", "fairchem", "dpmd"]
+    },
+    "task": {
+      "type": "string",
+      "enum": ["inference", "training", "evaluation"]
+    },
+    "dataset": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "e.g., demo_100, wbm_1k" },
+        "n_structures": { "type": "integer" },
+        "source_path": { "type": "string" },
+        "format": { "type": "string", "description": "e.g., extxyz, dp_npy" }
+      }
+    },
+    "hardware": {
+      "type": "object",
+      "properties": {
+        "gpu": { "type": "string", "description": "e.g., 'A100 40GB' or 'none'" },
+        "cpu": { "type": "string" },
+        "ram_gb": { "type": "number" }
+      }
+    },
+    "started_at": { "type": "string", "format": "date-time" },
+    "finished_at": { "type": "string", "format": "date-time" },
+    "duration_seconds": { "type": "number" },
+    "success": { "type": "boolean" },
+    "failure_step": {
+      "type": ["string", "null"],
+      "description": "step_id where the task failed, null if success=true"
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["step_id", "category", "started_at", "duration_seconds", "status"],
+        "properties": {
+          "step_id": { "type": "string", "description": "Unique within experiment, e.g., 'env_setup', 'data_conv', 'inference_run'" },
+          "category": {
+            "type": "string",
+            "enum": ["env_setup", "data_io", "data_conversion", "model_download", "inference", "training", "evaluation", "result_io", "other"]
+          },
+          "started_at": { "type": "string", "format": "date-time" },
+          "finished_at": { "type": "string", "format": "date-time" },
+          "duration_seconds": { "type": "number" },
+          "status": {
+            "type": "string",
+            "enum": ["success", "failure", "skipped"]
+          },
+          "command": { "type": "string", "description": "The actual shell or python command run" },
+          "stdout_tail": { "type": "string", "description": "Last ~500 chars of stdout for sanity check" },
+          "error_message": { "type": ["string", "null"] },
+          "notes": { "type": "string" }
+        }
+      }
+    },
+    "outputs": {
+      "type": "object",
+      "properties": {
+        "predictions_path": { "type": "string" },
+        "model_checkpoint_path": { "type": "string" },
+        "metrics": {
+          "type": "object",
+          "description": "Populated for evaluation tasks",
+          "properties": {
+            "mae_energy_ev_per_atom": { "type": "number" },
+            "mae_force_ev_per_ang": { "type": "number" },
+            "rmsd_relax_ang": { "type": "number" },
+            "f1_stability": { "type": "number" },
+            "n_completed": { "type": "integer" },
+            "n_failed": { "type": "integer" }
+          }
+        }
+      }
+    },
+    "agent_notes": {
+      "type": "string",
+      "description": "Free-form notes by agent about its decisions, deviations from SOP, human interventions"
+    },
+    "human_notes": {
+      "type": "string"
+    }
+  }
+}

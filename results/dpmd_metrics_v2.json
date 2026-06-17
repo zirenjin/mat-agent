@@ -1,0 +1,11 @@
+{
+  "n_total": 100,
+  "n_with_energy_truth": 100,
+  "mae_energy_raw_ev_per_atom": 4.777188670515308,
+  "mae_energy_raw_note": "raw, reference-mismatched, not meaningful",
+  "mae_energy_centered_ev_per_atom": 1.6196245759102956,
+  "spearman_rho": 0.0653105310531053,
+  "spearman_pvalue": 0.5185488419074739,
+  "predictions_path": "results/dpmd_preds.xyz",
+  "truth_path": "data/prepared/test.extxyz"
+}

@@ -1,0 +1,27 @@
+{
+  "branch": "off23_stage1",
+  "model_path": "runs/ft/ft_off23/ft_off23.model",
+  "n_test": 50,
+  "n_atoms_per_struct": 21,
+  "hard_gate": {
+    "metric": "force_mae_meV_per_ang",
+    "threshold_meV_per_ang": 26.4,
+    "rule": "4x paper from-scratch target (6.6 meV/A)",
+    "value": 7.6948,
+    "verdict": "PASS",
+    "margin_to_paper_x": 1.17
+  },
+  "force": {
+    "mae_meV_per_ang": 7.6948,
+    "rmse_meV_per_ang": 11.1764,
+    "true_force_scale_rms_meV_per_ang": 1215.09
+  },
+  "energy": {
+    "mae_total_meV": 9.8434,
+    "rmse_total_meV": 10.9549,
+    "mae_centered_meV": 4.3468,
+    "mae_per_atom_meV": 0.4687,
+    "mean_signed_offset_meV": -9.5786,
+    "note": "E0s=average -> absolute energy on rMD17 reference; total\u2248centered confirms no constant offset"
+  }
+}

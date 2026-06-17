@@ -1,0 +1,22 @@
+{
+  "verdict": "FAIL",
+  "primary_metric": "force_rmse_meV_per_ang",
+  "n_structures": 1000,
+  "force": {
+    "mae_meV_per_ang": 256.0815,
+    "rmse_meV_per_ang": 337.5078
+  },
+  "energy_per_atom_meV": {
+    "mae_raw": 832462.8359,
+    "rmse_raw": 832462.836,
+    "mae_centered": 5.6356,
+    "rmse_centered": 7.0504
+  },
+  "energy_note": "raw energy MAE high (832463); centered = 5.6 (likely reference offset)",
+  "thresholds": {
+    "force_GOOD_rmse": "< 100 meV/A",
+    "force_PASS_rmse": "< 300 meV/A"
+  },
+  "reference_context": "Trained-from-scratch MACE on rMD17 aspirin reports ~5 meV/atom energy, ~20-50 meV/A force (Kovacs et al. JCP 2023). MACE-MP-0 medium zero-shot on organic molecules expected ~100-300 meV/A force RMSE since training domain is primarily inorganic Materials Project.",
+  "interpretation": "Zero-shot inference of MACE-MP-0 medium on rMD17 aspirin (organic, off-training-domain). Pipeline pass means MACE loads, runs batch inference via mace_eval_configs CLI, and produces predictions with reasonable physical magnitude."
+}
