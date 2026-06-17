@@ -6,36 +6,70 @@ ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 usage() {
     cat >&2 << 'USAGE'
 Usage: bash models/mace/api/evaluate.sh \
-    --predictions <path>    Output extxyz from inference.sh
-    --truth <path>          Ground-truth extxyz
-    --output <path>         Path for verdict JSON
-    [--metrics <list>]      Reserved for metric selection
+    --model <path>          Model checkpoint
+    --data <path>           Test extxyz with ref_energy/ref_forces
+    --output <path>         Metrics JSON
+    [--head <string>]       Accepted for API uniformity
+    [--compute-stress]      Request stress prediction when supported
+    [--metrics <mae|rmse|both>] Default: both
+    [--device <cpu|cuda>]   Default: cpu
+    [--batch-size <int>]    Default: 4
+    [--num-workers <int>]   Default: 0
+    [--dtype <float32|float64>] Default: float32
+    [--seed <int>]          Default: 0
 USAGE
     exit 1
 }
 
-PREDICTIONS=""; TRUTH=""; OUTPUT=""; METRICS=""
+MODEL=""; DATA=""; OUTPUT=""; HEAD=""; COMPUTE_STRESS=0
+METRICS="both"; DEVICE="cpu"; BATCH_SIZE=4; NUM_WORKERS=0; DTYPE="float32"; SEED=0
 
 while [ $# -gt 0 ]; do
     case "$1" in
-        --predictions) PREDICTIONS="$2"; shift 2 ;;
-        --truth)       TRUTH="$2"; shift 2 ;;
-        --output)      OUTPUT="$2"; shift 2 ;;
-        --metrics)     METRICS="$2"; shift 2 ;;
-        -h|--help)     usage ;;
+        --model)          MODEL="$2"; shift 2 ;;
+        --data)           DATA="$2"; shift 2 ;;
+        --output)         OUTPUT="$2"; shift 2 ;;
+        --head)           HEAD="$2"; shift 2 ;;
+        --compute-stress) COMPUTE_STRESS=1; shift ;;
+        --metrics)        METRICS="$2"; shift 2 ;;
+        --device)         DEVICE="$2"; shift 2 ;;
+        --batch-size)     BATCH_SIZE="$2"; shift 2 ;;
+        --num-workers)    NUM_WORKERS="$2"; shift 2 ;;
+        --dtype)          DTYPE="$2"; shift 2 ;;
+        --seed)           SEED="$2"; shift 2 ;;
+        -h|--help)        usage ;;
         *) echo "Unknown flag: $1" >&2; usage ;;
     esac
 done
 
-[ -z "$PREDICTIONS" ] && { echo "ERROR: --predictions required" >&2; usage; }
-[ -z "$TRUTH" ]       && { echo "ERROR: --truth required" >&2; usage; }
-[ -z "$OUTPUT" ]      && { echo "ERROR: --output required" >&2; usage; }
+[ -z "$MODEL" ]  && { echo "ERROR: --model required" >&2; usage; }
+[ -z "$DATA" ]   && { echo "ERROR: --data required" >&2; usage; }
+[ -z "$OUTPUT" ] && { echo "ERROR: --output required" >&2; usage; }
 
-[ -f "$PREDICTIONS" ] || { echo "ERROR: predictions not found: $PREDICTIONS" >&2; exit 1; }
-[ -f "$TRUTH" ]       || { echo "ERROR: truth not found: $TRUTH" >&2; exit 1; }
+[ -f "$MODEL" ] || { echo "ERROR: model not found: $MODEL" >&2; exit 1; }
+[ -f "$DATA" ]  || { echo "ERROR: data not found: $DATA" >&2; exit 1; }
 
-pred_path=$(realpath "$PREDICTIONS" 2>/dev/null || echo "$PREDICTIONS")
-truth_path=$(realpath "$TRUTH" 2>/dev/null || echo "$TRUTH")
+tmp_dir=$(mktemp -d)
+trap 'rm -rf "$tmp_dir"' EXIT
+predictions="$tmp_dir/predictions.extxyz"
+
+stress_args=()
+[ "$COMPUTE_STRESS" -eq 0 ] || stress_args=(--compute-stress)
+
+bash "$ROOT/models/mace/api/inference.sh" \
+    --model "$MODEL" \
+    --data "$DATA" \
+    --output "$predictions" \
+    --head "$HEAD" \
+    "${stress_args[@]}" \
+    --device "$DEVICE" \
+    --batch-size "$BATCH_SIZE" \
+    --num-workers "$NUM_WORKERS" \
+    --dtype "$DTYPE" \
+    --seed "$SEED"
+
+pred_path=$(realpath "$predictions" 2>/dev/null || echo "$predictions")
+truth_path=$(realpath "$DATA" 2>/dev/null || echo "$DATA")
 output_dir=$(dirname "$(realpath "$OUTPUT" 2>/dev/null || echo "$OUTPUT")")
 output_name=$(basename "$OUTPUT")
 mkdir -p "$output_dir"
