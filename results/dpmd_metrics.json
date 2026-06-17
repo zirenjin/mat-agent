@@ -1,8 +1,0 @@
-{
-  "n_total": 100,
-  "n_with_energy_truth": 100,
-  "mae_energy_ev_per_atom": 4.777188670515308,
-  "mae_force_ev_per_ang": null,
-  "predictions_path": "results/dpmd_preds.xyz",
-  "truth_path": "data/prepared/test.extxyz"
-}

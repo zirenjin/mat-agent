@@ -33,16 +33,13 @@ data/**/dp_*/
 # Experiment artifacts
 experiments/checkpoints/
 experiments/predictions/
+experiments/verdicts/
 experiments/time_logs/
 runs/
+results/
 results/time_logs/
 results/**/*.npz
 results/**/*.xyz
-
-# Keep small verdict JSONs visible when results is versioned
-!experiments/verdicts/
-!experiments/verdicts/**/*.json
-!results/*verdict*.json
 
 # Datasets, including small prepared samples
 data/**/*.extxyz
@@ -59,3 +56,12 @@ data/**/manifest.json
 datasets/**/manifest.json
 datasets/prep_scripts/
 datasets/prep_scripts/**
+
+# One-off data preparation and experiment analysis scripts
+/data_prep.py
+/prepare_*.py
+/mp_vs_off_force_delta.py
+/verdict.py
+/tools/eval_ft.py
+/tools/pearson_ft.py
+/tools/run_mace_ft.sh
