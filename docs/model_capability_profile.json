@@ -1,0 +1,473 @@
+{
+  "_meta": {
+    "description": "Cold-start capability profile for mat-agent MLIP selector. All entries sourced from official papers, official documentation, and public benchmark leaderboards. No internal experimental data used. Agent should treat these as prior beliefs and update them via runtime evaluation logs.",
+    "last_updated": "2026-06-25",
+    "sources": {
+      "matbench_discovery": "https://matbench-discovery.materialsproject.org (leaderboard accessed 2026-06-25)",
+      "mace_paper": "Batatia et al., arXiv:2401.00096 (MACE-MP-0 foundation model paper)",
+      "mace_off_paper": "Kovacs et al., JACS 2025, 147(21):17598 (MACE-OFF)",
+      "mace_foundations_repo": "https://github.com/ACEsuit/mace-foundations",
+      "dpa3_paper": "Zhang et al., arXiv:2506.01686 (DPA-3 paper)",
+      "uma_paper": "Wood et al., arXiv:2506.23971 (UMA paper)",
+      "lambench": "arXiv:2504.19578 (LAMBench multi-domain evaluation)",
+      "catbench": "Cell Reports Physical Science, 2025 (CatBench catalysis evaluation)",
+      "chips_ff": "arXiv:2412.10516 (CHIPS-FF materials property benchmark)"
+    },
+    "benchmark_glossary": {
+      "matbench_discovery_F1": "F1 score for thermodynamic stability classification on WBM test set (257k structures), DFT-PBE reference hull. Higher is better, max possible ~1.0.",
+      "matbench_discovery_DAF": "Discovery Acceleration Factor — ratio of model precision to random baseline prevalence (15.3% stable). Max possible ~6.54.",
+      "matbench_discovery_MAE": "Mean absolute error of convex hull distance prediction, eV/atom. Lower is better.",
+      "matbench_discovery_RMSD": "Root mean squared displacement after geometry relaxation vs DFT reference, Angstrom. Lower is better.",
+      "energy_MAE_validation": "Energy MAE on held-out validation set from training dataset distribution, meV/atom.",
+      "force_MAE_validation": "Force MAE on held-out validation set from training dataset distribution, meV/Angstrom."
+    }
+  },
+  "MACE-MP-0": {
+    "model_id": "MACE-MP-0",
+    "checkpoint_key": "2023-12-03-mace-128-L1_epoch-199.model",
+    "version": "v0.3.5",
+    "architecture": "Higher-order equivariant message-passing neural network (MACE), E(3)-equivariant, conservative forces via autograd",
+    "n_parameters": 4690000,
+    "release_date": "2023-07",
+    "institution": "University of Cambridge (Batatia, Kovacs, Simm, Csanyi et al.)",
+    "paper": "arXiv:2401.00096",
+    "training_data": {
+      "primary_dataset": "MPtrj",
+      "n_structures": 1580395,
+      "dft_functional": "PBE+U (GGA)",
+      "dft_code": "VASP",
+      "element_coverage": "89 elements (H to Bi, excluding noble gases and most actinides)",
+      "system_types": [
+        "inorganic crystals",
+        "binary/ternary/quaternary compounds",
+        "oxides",
+        "nitrides",
+        "sulfides",
+        "halides",
+        "alloys"
+      ],
+      "notes": "Training data is Materials Project relaxation trajectories. Predominantly periodic inorganic solids. No organic molecules, no surfaces, no liquids in training set."
+    },
+    "benchmark_performance": {
+      "matbench_discovery": {
+        "F1": 0.774,
+        "DAF": 4.056,
+        "MAE_eV_per_atom": 0.065,
+        "RMSD_angstrom": 0.082,
+        "missing_preds_fraction": 0.00013,
+        "notes": "Compliant submission using MPtrj-trained medium checkpoint. Submitted 2023-07-14.",
+        "source": "matbench-discovery.materialsproject.org/models/mace-mp-0"
+      },
+      "validation_on_training_distribution": {
+        "energy_MAE_meV_per_atom": 20,
+        "force_MAE_meV_per_angstrom": 45,
+        "notes": "Reported in MACE-MP preprint for medium checkpoint. In-distribution validation only.",
+        "source": "arXiv:2401.00096"
+      },
+      "catalysis_CatBench": {
+        "total_MAE_eV": 1.137,
+        "normal_MAE_eV": 0.842,
+        "normal_rate_percent": 64.3,
+        "notes": "MACE-MP-0 (baseline variant) on large-molecule adsorption on metal surfaces. Substantially weaker than UMA on this task. Fine-tuning reduces MAE to ~0.065 eV.",
+        "source": "CatBench, Cell Reports Physical Science 2025"
+      }
+    },
+    "domain_strengths": [
+      "Broad inorganic crystal coverage (89 elements)",
+      "Strong for binary/ternary oxide, nitride, sulfide property prediction",
+      "Stable MD for inorganic solids at moderate temperatures",
+      "Well-calibrated for PBE-level energy/force landscapes",
+      "Fastest inference among the three models (4.69M params)",
+      "Multi-head uncertainty estimation (MHC) natively supported since MACE v0.3.7",
+      "Most mature active learning tooling ecosystem"
+    ],
+    "domain_weaknesses": [
+      "Organic molecules: not in training distribution, poor out-of-the-box accuracy",
+      "Van der Waals / dispersion-dominated systems: GGA-level training data has systematic errors",
+      "Surface catalysis / adsorbates: large MAE on metal surface adsorption vs UMA",
+      "High-pressure / extreme conditions: less tested than catalysis-focused models",
+      "Charged systems and open-shell: no explicit spin/charge embedding",
+      "Functional mismatch risk: performs WORSE than MACE-OFF23 on ωB97M-D3-level data despite MACE-OFF23 being nominally 'more accurate' for organics (see functional mismatch notes)"
+    ],
+    "finetuning_profile": {
+      "supported_finetune_modes": [
+        "single",
+        "multihead",
+        "lora"
+      ],
+      "multihead_behavior": "Adds a NEW output head; existing heads (MACE-MP-0 head) remain frozen. Target-specific head is trained.",
+      "recommended_data_size": {
+        "minimal": "50-200 structures (few-shot, expect limited improvement)",
+        "typical": "500-2000 structures",
+        "rich": "2000+ structures (full finetune recommended)"
+      },
+      "typical_training_time_A100_80G": "30 min - 2 h (depending on dataset size and epoch count)",
+      "GPU_memory_GB": "~20-35 GB for medium checkpoint",
+      "known_failure_modes": [
+        "Catastrophic forgetting in single-head finetune on very small datasets (<100 structures)",
+        "Force instability if training structures include very short interatomic distances (<0.8 Angstrom) without prior geometry relaxation"
+      ],
+      "cold_start_recommendation": "For inorganic crystal tasks: preferred first-choice model. For organic/surface tasks: consider UMA or DPA first."
+    },
+    "uncertainty_quantification": {
+      "method": "Multi-Head Committee (MHC)",
+      "supported": true,
+      "mace_version_required": ">=0.3.7",
+      "implementation_notes": "Attach multiple output heads to shared backbone. Energy uncertainty: near-zero overhead. Force uncertainty: requires multiple backward passes (~2-3x inference time).",
+      "correlation_with_true_error": "Good (Pearson r ~0.7-0.85 depending on dataset, per Beck et al. 2025)",
+      "source": "Beck et al., J. Chem. Phys. 163, 234103 (2025)"
+    }
+  },
+  "DPA-3.1-3M": {
+    "model_id": "DPA-3.1-3M",
+    "checkpoint_key": "DPA-3.1-3M (OpenLAM pretrained, available on figshare)",
+    "version": "v0.3 (DeePMD-kit 3.1.0+)",
+    "architecture": "Message-passing neural network with attention, implemented in DeePMD-kit. Large Atomic Model (LAM) design. Multi-task fitting: shared descriptor backbone + multiple independent fitting heads per domain.",
+    "n_parameters": 3270000,
+    "release_date": "2025-06",
+    "institution": "AI for Science Institute Beijing / DP Technology (Zhang, Peng, Cai, L. Zhang, H. Wang et al.)",
+    "paper": "arXiv:2506.01686",
+    "training_data": {
+      "primary_dataset": "OpenLAM dataset v1",
+      "n_structures": 163000000,
+      "dft_functional": "Mixed (PBE, PBEsol, SCAN, r2SCAN, HSE06 depending on domain/head)",
+      "dft_code": "VASP, CP2K, Quantum ESPRESSO (domain-dependent)",
+      "element_coverage": "Full periodic table coverage claimed",
+      "system_types": [
+        "inorganic crystals (alloys, oxides, semiconductors)",
+        "organic molecules (SPICE-derived)",
+        "surfaces and catalysis (OC20-derived subsets)",
+        "biological molecules",
+        "liquids and amorphous materials"
+      ],
+      "domain_heads_pretrained": [
+        "Domains_Alloy",
+        "Domains_Anode",
+        "Domains_Cluster",
+        "Domains_Drug",
+        "Domains_FerroEle",
+        "Domains_OC2M",
+        "Domains_SSE-PBE",
+        "Domains_SemiCond",
+        "H2O_H2O-PD",
+        "various metal systems"
+      ],
+      "notes": "OpenLAM is a large multi-domain dataset aggregating 18+ sub-datasets. DPA-3.1-3M is a 3M-parameter variant; DPA-3.1 (full) uses more parameters. The 3M variant is the one deployed in mat-agent."
+    },
+    "benchmark_performance": {
+      "matbench_discovery_finetuned": {
+        "model_name": "DPA-3.1-3M-FT",
+        "F1": 0.887,
+        "DAF": 5.203,
+        "MAE_eV_per_atom": 0.031,
+        "RMSD_angstrom": 0.064,
+        "missing_preds_fraction": 0.0,
+        "notes": "Fine-tuned variant on MPtrj subset. Substantially better than MACE-MP-0 (F1 0.774 vs 0.887). Among top-5 on leaderboard as of 2025-06.",
+        "source": "matbench-discovery.materialsproject.org/models/dpa-3.1-3m-ft"
+      },
+      "matbench_discovery_zero_shot_mptrj": {
+        "model_name": "DPA-3.1-MPtrj",
+        "notes": "Zero-shot on MPtrj-trained variant also available on leaderboard. Lower than FT variant.",
+        "source": "matbench-discovery.materialsproject.org/models/dpa-3.1-mptrj"
+      },
+      "lambench_molecules": {
+        "rank": 1,
+        "notes": "DPA-3.1-3M ranks first in molecular domain in LAMBench, ahead of DPA-2.4-7M and Orb-v3.",
+        "source": "LAMBench arXiv:2504.19578"
+      },
+      "lambench_inorganic": {
+        "notes": "Competitive with top models; similar ranking pattern to Matbench Discovery.",
+        "source": "LAMBench arXiv:2504.19578"
+      },
+      "dpa2_test_sets": {
+        "energy_RMSE_meV_per_atom": "varies by system; see Table S-5 in arXiv:2506.01686",
+        "force_RMSE_meV_per_angstrom": "varies by system; DPA3-L24 consistently best on multi-system LWARMSE",
+        "notes": "18 distinct datasets covering water, organic molecules, metals, alloys, semiconductors. ~60% reduction in energy LWARMSE vs NequIP.",
+        "source": "arXiv:2506.01686 Table S-5"
+      }
+    },
+    "domain_strengths": [
+      "Best zero-shot molecular accuracy among three mat-agent models (LAMBench rank 1 in molecules)",
+      "Strong inorganic crystal performance after fine-tuning (Matbench Discovery F1 0.887)",
+      "Multi-task head design: can select domain-specific fitting head for target system without retraining backbone",
+      "Robust multi-domain generalization due to 163M training structures",
+      "Good energy conservation (conservative force formulation)",
+      "Supports multi-task finetuning to prevent catastrophic forgetting"
+    ],
+    "domain_weaknesses": [
+      "Surface catalysis / adsorption: weaker than UMA (UMA trained on full OC20/OC22)",
+      "Inference speed: slower than MACE for same system size due to attention mechanism",
+      "No native uncertainty quantification head (must use ensemble or external method)",
+      "CXX11 ABI fragility: containerization requires special handling (cannot FROM mat-agent/base)",
+      "Mixed DFT levels across training heads — functional mismatch risk when combining heads"
+    ],
+    "finetuning_profile": {
+      "supported_finetune_modes": [
+        "single",
+        "multitask"
+      ],
+      "head_selection_flag": "--model-branch (e.g., Domains_SemiCond, Domains_Alloy)",
+      "multitask_finetune_behavior": "Joint training on target task + one or more pretrained branches to prevent catastrophic forgetting",
+      "recommended_data_size": {
+        "minimal": "50-200 structures with multitask mode recommended",
+        "typical": "500-3000 structures",
+        "rich": "3000+ (full single-task finetune viable)"
+      },
+      "typical_training_time_A100_80G": "1 - 3 h (attention mechanism is heavier than MACE)",
+      "GPU_memory_GB": "~25-45 GB",
+      "known_failure_modes": [
+        "Single-task finetune with <200 structures causes rapid catastrophic forgetting",
+        "Head selection mismatch: using wrong domain head for target system degrades performance"
+      ],
+      "cold_start_recommendation": "For organic molecules: preferred first-choice (LAMBench rank 1). For inorganic after finetuning: competitive with MACE. NOT recommended for surface catalysis without UMA comparison."
+    },
+    "uncertainty_quantification": {
+      "method": "Ensemble (no native UQ head)",
+      "supported": false,
+      "workaround": "Train 3+ independent models with different random seeds; compute force std across ensemble. Expensive.",
+      "alternative": "Use MACE MHC as uncertainty proxy for cross-model active learning (query structures uncertain under MACE, label with DPA-level oracle)",
+      "notes": "DPA-3 does not have a MHC-style mechanism as of v0.3. UQ is a known gap."
+    }
+  },
+  "UMA-s-1p1": {
+    "model_id": "UMA-s-1p1",
+    "checkpoint_key": "uma-s-1p1 (HuggingFace: facebook/uma)",
+    "version": "UMA-S-1.1 (released 2025-06, bugfix over UMA-S-1.0 for size-extensive energy)",
+    "architecture": "eSEN (equivariant Scalable Equivariant Network) with Mixture-of-Linear-Experts (MoLE) dynamic routing. Single output head; domain selected via task_name parameter activating different expert routing. Non-conservative force prediction (direct force regression head).",
+    "n_parameters": 31000000,
+    "release_date": "2025-06",
+    "institution": "Meta FAIR Chemistry (Wood, Barroso-Luque et al.)",
+    "paper": "arXiv:2506.23971",
+    "training_data": {
+      "primary_datasets": [
+        "OMat24 (100M inorganic crystal configurations, PBE+U)",
+        "OC20 (130M surface + adsorbate, PBE)",
+        "OC22 (9M surface + adsorbate, PBE)",
+        "OMol25 (100M molecular configurations, ωB97M-V)",
+        "OMC25 (25M molecular crystal configurations)",
+        "ODAC25 (29M metal-organic framework configurations)"
+      ],
+      "total_structures_approx": 400000000,
+      "dft_functional": "Mixed: PBE+U (materials), PBE (surfaces), ωB97M-V (molecules)",
+      "element_coverage": "Broad periodic table coverage across all domains",
+      "system_types": [
+        "inorganic crystals and surfaces",
+        "heterogeneous catalysis (metal surfaces + adsorbates)",
+        "organic molecules (drug-like, biomolecular)",
+        "metal-organic frameworks",
+        "molecular crystals"
+      ],
+      "notes": "Largest training corpus of three mat-agent models. OC20/OC22 inclusion means UMA has data leakage risk when evaluating on OC22 benchmarks. UMA is the ONLY model among the three with significant surface catalysis training data.",
+      "data_leakage_warning": "UMA trained on OC22 data. Evaluating UMA on OC22-derived benchmarks is NOT zero-shot. Requires strict zero-shot-only evaluation protocol for fair comparison."
+    },
+    "benchmark_performance": {
+      "matbench_discovery": {
+        "model_name": "UMA-S-1.1",
+        "F1": 0.913,
+        "RMSD_angstrom": 0.064,
+        "MAE_eV_per_atom": 0.02,
+        "notes": "Non-compliant (trained on OMat24 which overlaps with test set chemical space). Best materials MAE among three mat-agent models.",
+        "source": "UMA paper Table 13 (arXiv:2506.23971)"
+      },
+      "matbench_discovery_uma_m": {
+        "model_name": "UMA-M-1.1",
+        "F1": 0.929,
+        "MAE_eV_per_atom": 0.018,
+        "notes": "Larger variant, not deployed in mat-agent but relevant as oracle candidate.",
+        "source": "UMA paper Table 14 (arXiv:2506.23971)"
+      },
+      "catalysis_CatBench": {
+        "total_MAE_eV": 0.13,
+        "normal_MAE_eV": 0.127,
+        "notes": "UMA-s achieves best performance on large-molecule surface adsorption. Nearly 9x lower MAE than MACE-MP-0 (0.130 vs 1.137 eV) on this benchmark. Approaching chemical accuracy.",
+        "source": "CatBench, Cell Reports Physical Science 2025"
+      },
+      "OC20_surface_benchmark": {
+        "MAE_eV": 0.172,
+        "notes": "UMA-s-1p1 on OC20 metal surface adsorption. Note: NOT zero-shot (OC20 in training data).",
+        "source": "arXiv:2510.25380 Table VII"
+      },
+      "transition_state_search": {
+        "success_rate_percent": 86.2,
+        "mean_gradient_evaluations": 3.3,
+        "notes": "UMA-M achieves lowest computational cost on organic reaction TS search (Baker + Sharada sets). OMol25-trained models systematically better on organics.",
+        "source": "arXiv:2604.00405"
+      }
+    },
+    "domain_strengths": [
+      "Best surface catalysis performance among three mat-agent models by large margin",
+      "Best out-of-the-box accuracy for heterogeneous catalysis (metal surfaces + adsorbates)",
+      "Largest and most diverse training corpus (400M+ structures across 6 datasets)",
+      "Strong molecular accuracy (ωB97M-V training data for OMol25 subset)",
+      "Dynamic MoLE routing: single model handles multiple chemical domains via task_name",
+      "Best materials MAE on Matbench Discovery (0.020 eV/atom for UMA-S-1.1)",
+      "NVE MD energy conservation supported (UMA-S-1.1+)"
+    ],
+    "domain_weaknesses": [
+      "Non-conservative forces (direct force regression): energy-force consistency not guaranteed, can cause energy drift in long MD",
+      "No native uncertainty quantification (MoLE routing is not a UQ mechanism)",
+      "OC22 data leakage: zero-shot evaluation on OC22-derived tasks is NOT valid — must be clearly flagged in any benchmark design",
+      "Largest model among three (31M params vs 4.69M for MACE): slower inference",
+      "Fine-tuning less mature than MACE ecosystem",
+      "Charged systems and unpaired electrons: systematic errors ~200-500 meV (noted in OMol25 paper)"
+    ],
+    "finetuning_profile": {
+      "supported_finetune_modes": [
+        "single",
+        "lora"
+      ],
+      "task_name_flag": "--head (maps to task_name parameter internally)",
+      "available_task_names": [
+        "omat",
+        "omol",
+        "oc20",
+        "odac"
+      ],
+      "mole_routing_note": "MoLE routing is dynamic at inference time via task_name. NOT equivalent to DPA's independent fitting heads. No new head is added during fine-tuning.",
+      "recommended_data_size": {
+        "minimal": "100-500 structures",
+        "typical": "1000-5000 structures",
+        "rich": "5000+ (full finetune)"
+      },
+      "typical_training_time_A100_80G": "2 - 6 h (31M params, heavier than MACE)",
+      "GPU_memory_GB": "~40-70 GB",
+      "known_failure_modes": [
+        "OC22 data leakage: if using UMA as oracle or as baseline on surface tasks, must declare non-zero-shot status",
+        "Long MD runs may show energy drift due to non-conservative forces"
+      ],
+      "cold_start_recommendation": "For surface catalysis / heterogeneous catalysis tasks: FIRST CHOICE, no competition. For inorganic crystals: competitive but MACE-MPA-0 or DPA-FT may match it at lower cost. For organics: competitive; DPA-3 may be preferred for molecules alone."
+    },
+    "uncertainty_quantification": {
+      "method": "None natively",
+      "supported": false,
+      "workaround": "Ensemble of 3+ independently fine-tuned UMA models. Expensive given 31M params.",
+      "alternative": "Use MACE MHC as exploration model, use UMA as high-accuracy oracle/precision model in cross-model active learning loop",
+      "notes": "In mat-agent's intended cross-model collaboration paradigm, UMA-s is best positioned as the HIGH-ACCURACY PRECISION MODEL (or oracle), not the exploration model. MACE handles exploration (cheap, has MHC UQ), UMA handles precision."
+    }
+  },
+  "cross_model_comparison": {
+    "summary_table": {
+      "description": "Quick reference for agent model selection decisions",
+      "columns": [
+        "dimension",
+        "MACE-MP-0",
+        "DPA-3.1-3M",
+        "UMA-s-1p1"
+      ],
+      "rows": [
+        [
+          "Parameters",
+          "4.69M",
+          "3.27M",
+          "31M"
+        ],
+        [
+          "Training data size",
+          "1.58M (MPtrj)",
+          "163M (OpenLAM)",
+          "~400M (6 datasets)"
+        ],
+        [
+          "DFT level",
+          "PBE+U",
+          "Mixed (PBE/PBEsol/etc)",
+          "Mixed (PBE+U/ωB97M-V)"
+        ],
+        [
+          "Matbench Discovery F1",
+          "0.774",
+          "0.887 (FT)",
+          "0.913 (non-compliant)"
+        ],
+        [
+          "Matbench Discovery MAE (eV/at)",
+          "0.065",
+          "0.031 (FT)",
+          "0.020"
+        ],
+        [
+          "Surface catalysis MAE (eV)",
+          "1.137 (poor)",
+          "N/A",
+          "0.130 (best)"
+        ],
+        [
+          "Molecule accuracy",
+          "Poor (OOD)",
+          "Best (LAMBench rank 1)",
+          "Good"
+        ],
+        [
+          "Native UQ (MHC)",
+          "YES (v0.3.7+)",
+          "NO",
+          "NO"
+        ],
+        [
+          "Conservative forces",
+          "YES",
+          "YES",
+          "NO"
+        ],
+        [
+          "Inference speed (relative)",
+          "Fastest",
+          "Medium",
+          "Slowest"
+        ],
+        [
+          "Finetune maturity",
+          "HIGH",
+          "MEDIUM",
+          "MEDIUM"
+        ],
+        [
+          "Active learning role",
+          "EXPLORER (cheap UQ)",
+          "PRECISION (molecules)",
+          "PRECISION (surfaces/materials)"
+        ],
+        [
+          "OC22 data leakage risk",
+          "None",
+          "None",
+          "YES — flag if benchmarking on surfaces"
+        ]
+      ]
+    },
+    "recommended_collaboration_strategies": {
+      "strategy_A_inorganic_crystals": {
+        "scenario": "Target system is inorganic crystal (oxide, nitride, alloy, semiconductor)",
+        "explorer": "MACE-MP-0 (MHC uncertainty, fast, in-distribution)",
+        "precision": "DPA-3.1-3M (better Matbench Discovery F1 and MAE after FT)",
+        "rationale": "MACE explores efficiently with uncertainty signal; DPA delivers higher final accuracy on inorganic crystals"
+      },
+      "strategy_B_surface_catalysis": {
+        "scenario": "Target system involves metal surfaces, adsorbates, heterogeneous catalysis",
+        "explorer": "MACE-MP-0 (uncertainty-guided sampling of surface configurations)",
+        "precision": "UMA-s-1p1 (9x lower MAE than MACE on CatBench, trained on OC20/OC22)",
+        "rationale": "UMA's surface training data is irreplaceable for this domain. MACE provides cheap exploration.",
+        "warning": "If benchmarking against OC22-derived datasets, UMA is non-zero-shot. Document explicitly."
+      },
+      "strategy_C_organic_molecules": {
+        "scenario": "Target system is organic molecules (drug-like, biomolecular, reaction intermediates)",
+        "explorer": "MACE-MP-0 (MHC for structural diversity sampling, even if accuracy is low OOD)",
+        "precision": "DPA-3.1-3M (LAMBench rank 1 in molecules; trained on SPICE-derived data)",
+        "rationale": "DPA outperforms both MACE and UMA on molecular benchmarks per LAMBench."
+      },
+      "strategy_D_mixed_heterogeneous": {
+        "scenario": "Target system is chemically heterogeneous (e.g., organic-inorganic interface, MOF, battery interface)",
+        "explorer": "MACE-MP-0 (broad 89-element coverage, stable MD)",
+        "precision": "UMA-s-1p1 (most diverse training data, handles both inorganic and organic)",
+        "rationale": "UMA's multi-domain training is uniquely suited to heterogeneous systems. This is the primary aha-moment scenario.",
+        "aha_moment_hypothesis": "Agent may discover: use MACE to identify high-uncertainty regions of the heterogeneous interface, then use UMA (or DPA for molecular regions) to label those structures, creating a targeted fine-tuning dataset that outperforms single-model approaches."
+      }
+    },
+    "functional_mismatch_warning": {
+      "description": "Critical known confound for benchmark design and model selection",
+      "principle": "DFT functional alignment between model training data and benchmark reference data can dominate performance, potentially causing a model trained on 'higher-accuracy' functional to perform worse than one trained on the benchmark's native functional.",
+      "agent_guidance": "When selecting model for fine-tuning, prioritize functional alignment: PBE ground truth → MACE-MP-0 or DPA (PBE-trained heads); ωB97M-V ground truth → UMA (OMol25 trained with ωB97M-V). Do not assume that a model's nominal domain (e.g., 'organic molecules') guarantees better performance if functional levels are mismatched.",
+      "source": "LeMat-Traj arXiv:2508.20875 (multi-fidelity learning challenge); SevenNet-Omni arXiv:2510.11241 (cross-domain transfer with heterogeneous DFT settings)"
+    }
+  }
+}

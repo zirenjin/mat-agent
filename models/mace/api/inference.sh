@@ -17,11 +17,13 @@ Usage: bash models/mace/api/inference.sh \
     [--num-workers <int>]   Default: 0
     [--dtype <float32|float64>] Default: float32
     [--seed <int>]          Default: 0
+    [--uncertainty]        Enable MACE MHC uncertainty
+    [--save-embeddings]    Save node embeddings when supported
 USAGE
     exit 1
 }
 
-MODEL=""; DATA=""; OUTPUT=""; HEAD=""; COMPUTE_STRESS=0
+MODEL=""; DATA=""; OUTPUT=""; HEAD=""; COMPUTE_STRESS=0; UNCERTAINTY=0; SAVE_EMBEDDINGS=0
 DEVICE="cpu"; BATCH_SIZE=4; NUM_WORKERS=0; DTYPE="float32"; SEED=0
 
 while [ $# -gt 0 ]; do
@@ -36,6 +38,8 @@ while [ $# -gt 0 ]; do
         --num-workers)    NUM_WORKERS="$2"; shift 2 ;;
         --dtype)          DTYPE="$2"; shift 2 ;;
         --seed)           SEED="$2"; shift 2 ;;
+        --uncertainty)    UNCERTAINTY=1; shift ;;
+        --save-embeddings) SAVE_EMBEDDINGS=1; shift ;;
         -h|--help)        usage ;;
         *) echo "Unknown flag: $1" >&2; usage ;;
     esac
@@ -52,7 +56,14 @@ export MAT_AGENT_COMPUTE_STRESS="$COMPUTE_STRESS"
 export MAT_AGENT_NUM_WORKERS="$NUM_WORKERS"
 export MAT_AGENT_DTYPE="$DTYPE"
 export MAT_AGENT_SEED="$SEED"
+export MAT_AGENT_UNCERTAINTY="$UNCERTAINTY"
+export MAT_AGENT_SAVE_EMBEDDINGS="$SAVE_EMBEDDINGS"
+
+extra_args=()
+[ "$UNCERTAINTY" -eq 0 ] || extra_args+=(--uncertainty)
+[ "$SAVE_EMBEDDINGS" -eq 0 ] || extra_args+=(--save-embeddings)
+[ -z "$DTYPE" ] || extra_args+=(--dtype "$DTYPE")
 
 run_in_container \
     "mat-agent/mace:latest" \
-    "$MODEL" "$DATA" "$OUTPUT" "$DEVICE" "$HEAD" "$BATCH_SIZE"
+    "$MODEL" "$DATA" "$OUTPUT" "$DEVICE" "$HEAD" "$BATCH_SIZE" "${extra_args[*]}"
