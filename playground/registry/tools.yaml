@@ -14,3 +14,19 @@ tools:
     image: mat-agent/base:latest
     visible_to_agent: true
     purpose: export Matbench folds as JSONL
+
+  anomaly_sniffer:
+    command: python3 tools/anomaly_sniffer.py
+    image: mat-agent/base:latest
+    visible_to_agent: true
+    purpose: diagnose MLIP crashes and flag physical invariant violations
+  data_bridge_converter:
+    command: python3 playground/scripts/data_bridge_converter.py
+    image: mat-agent/base:latest
+    visible_to_agent: true
+    purpose: convert pred_* pseudo-label extxyz files into worker-model training datasets
+  runner_controller:
+    command: python3 playground/scripts/runner_controller.py
+    image: host
+    visible_to_agent: true
+    purpose: stream training telemetry and apply deterministic retry/self-healing actions

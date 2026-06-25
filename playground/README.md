@@ -37,3 +37,17 @@ playground/
 4. Put reusable orchestration code in `playground/scripts/`.
 5. Verify with a small smoke run before scaling the task outside Git-tracked
    paths.
+
+## Adaptive Agent Primitives
+
+The playground exposes three reusable primitives for autonomous training loops:
+
+- `tools/anomaly_sniffer.py`: converts crash logs and latest trajectories into
+  structured physical diagnostics.
+- `playground/scripts/data_bridge_converter.py`: maps scout-model `pred_*`
+  pseudo-labels into worker-model `ref_*` training datasets.
+- `playground/scripts/runner_controller.py`: wraps model training APIs with
+  telemetry, retry, and deterministic recovery hooks.
+
+These primitives are registered in `playground/registry/tools.yaml` so planners
+can discover and compose them without hard-coding paths.
