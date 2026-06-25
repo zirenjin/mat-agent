@@ -15,6 +15,14 @@ run_in_container() {
     output_name=$(basename "$output_path")
     model_name=$(basename "$model_path")
     data_name=$(basename "$data_path")
+    local stage_dir
+    stage_dir=$(mktemp -d /tmp/mat-agent-docker-infer.XXXXXX)
+    trap 'rm -rf "$stage_dir"' RETURN
+    mkdir -p "$stage_dir/models" "$stage_dir/data" "$stage_dir/output" "$stage_dir/tools"
+    cp "$model_path" "$stage_dir/models/$model_name"
+    cp "$data_path" "$stage_dir/data/$data_name"
+    cp -a "$ROOT/tools/." "$stage_dir/tools/"
+    chmod -R a+rwX "$stage_dir"
 
     local gpu_flags=""
     [ "$device" = "cuda" ] && gpu_flags="--gpus all"
@@ -31,20 +39,47 @@ run_in_container() {
     mkdir -p "$output_dir"
 
     echo "[docker] image=$image device=$device" >&2
+    echo "[docker] stage=$stage_dir" >&2
     echo "[docker] cmd=$container_cmd" >&2
 
     docker run --rm \
         $gpu_flags \
-        -v "$model_path:/work/models/$model_name:ro" \
-        -v "$data_path:/work/data/$data_name:ro" \
-        -v "$output_dir:/work/output" \
-        -v "$ROOT/tools:/opt/mat-agent-tools:ro" \
+        -v "$stage_dir/models:/work/models:ro" \
+        -v "$stage_dir/data:/work/data:ro" \
+        -v "$stage_dir/output:/work/output" \
+        -v "$stage_dir/tools:/opt/mat-agent-tools:ro" \
         -e PYTHONPATH="/opt/mat-agent-tools" \
         -e EXTRA_CONFIG_JSON="${EXTRA_CONFIG_JSON:-}" \
+        -e MAT_AGENT_CONFIG="${MAT_AGENT_CONFIG:-}" \
+        -e MAT_AGENT_REPLAY_DATA="${MAT_AGENT_REPLAY_DATA:-}" \
+        -e MAT_AGENT_FINETUNE_MODE="${MAT_AGENT_FINETUNE_MODE:-}" \
+        -e MAT_AGENT_LR="${MAT_AGENT_LR:-}" \
+        -e MAT_AGENT_WEIGHT_DECAY="${MAT_AGENT_WEIGHT_DECAY:-}" \
+        -e MAT_AGENT_GRAD_CLIP="${MAT_AGENT_GRAD_CLIP:-}" \
+        -e MAT_AGENT_ENERGY_WEIGHT="${MAT_AGENT_ENERGY_WEIGHT:-}" \
+        -e MAT_AGENT_FORCES_WEIGHT="${MAT_AGENT_FORCES_WEIGHT:-}" \
+        -e MAT_AGENT_STRESS_WEIGHT="${MAT_AGENT_STRESS_WEIGHT:-}" \
+        -e MAT_AGENT_REPLAY_WEIGHT="${MAT_AGENT_REPLAY_WEIGHT:-}" \
+        -e MAT_AGENT_NUM_WORKERS="${MAT_AGENT_NUM_WORKERS:-}" \
+        -e MAT_AGENT_SEED="${MAT_AGENT_SEED:-}" \
+        -e MAT_AGENT_SAVE_EVERY="${MAT_AGENT_SAVE_EVERY:-}" \
+        -e MAT_AGENT_LOG_EVERY="${MAT_AGENT_LOG_EVERY:-}" \
+        -e MAT_AGENT_RUN_NAME="${MAT_AGENT_RUN_NAME:-}" \
+        -e MAT_AGENT_ENABLE_EMA="${MAT_AGENT_ENABLE_EMA:-}" \
+        -e MAT_AGENT_EMA_DECAY="${MAT_AGENT_EMA_DECAY:-}" \
+        -e MAT_AGENT_ENABLE_SWA="${MAT_AGENT_ENABLE_SWA:-}" \
+        -e MAT_AGENT_START_SWA="${MAT_AGENT_START_SWA:-}" \
+        -e MAT_AGENT_SWA_ENERGY_WEIGHT="${MAT_AGENT_SWA_ENERGY_WEIGHT:-}" \
+        -e MAT_AGENT_SWA_FORCES_WEIGHT="${MAT_AGENT_SWA_FORCES_WEIGHT:-}" \
         -w /work \
         "$image" \
-        /bin/sh -c "$container_cmd"
-    return $?
+        /bin/sh -c "$container_cmd" > "$stage_dir/output/docker.log" 2>&1
+    local status=$?
+    cp "$stage_dir/output/docker.log" "$output_dir/docker.log" 2>/dev/null || true
+    if [ "$status" -eq 0 ] && [ -f "$stage_dir/output/$output_name" ]; then
+        cp "$stage_dir/output/$output_name" "$output_dir/$output_name"
+    fi
+    return "$status"
 }
 
 # ---------------------------------------------------------------------------
@@ -61,6 +96,15 @@ run_train_in_container() {
     model_name=$(basename "$model_path")
     train_name=$(basename "$train_data")
     val_name=$(basename "$val_data")
+    local stage_dir
+    stage_dir=$(mktemp -d /tmp/mat-agent-docker-train.XXXXXX)
+    trap 'rm -rf "$stage_dir"' RETURN
+    mkdir -p "$stage_dir/models" "$stage_dir/data" "$stage_dir/output" "$stage_dir/tools"
+    cp "$model_path" "$stage_dir/models/$model_name"
+    cp "$train_data" "$stage_dir/data/$train_name"
+    cp "$val_data" "$stage_dir/data/$val_name"
+    cp -a "$ROOT/tools/." "$stage_dir/tools/"
+    chmod -R a+rwX "$stage_dir"
 
     local gpu_flags=""
     [ "$device" = "cuda" ] && gpu_flags="--gpus all"
@@ -83,29 +127,54 @@ run_train_in_container() {
     mkdir -p "$output_dir"
 
     echo "[docker] image=$image device=$device" >&2
+    echo "[docker] stage=$stage_dir" >&2
     echo "[docker] cmd=$container_cmd" >&2
 
     local extra_mount=""
     if [ -n "$test_data" ] && [ -f "$test_data" ]; then
         test_path=$(realpath "$test_data" 2>/dev/null || echo "$test_data")
         test_name=$(basename "$test_path")
-        extra_mount="-v $test_path:/work/data/$test_name:ro"
+        cp "$test_path" "$stage_dir/data/$test_name"
+        chmod a+r "$stage_dir/data/$test_name"
     fi
 
     docker run --rm \
         $gpu_flags \
-        -v "$model_path:/work/models/$model_name:ro" \
-        -v "$train_data:/work/data/$train_name:ro" \
-        -v "$val_data:/work/data/$val_name:ro" \
-        -v "$output_dir:/work/output" \
-        $extra_mount \
-        -v "$ROOT/tools:/opt/mat-agent-tools:ro" \
+        -v "$stage_dir/models:/work/models:ro" \
+        -v "$stage_dir/data:/work/data:ro" \
+        -v "$stage_dir/output:/work/output" \
+        -v "$stage_dir/tools:/opt/mat-agent-tools:ro" \
         -e PYTHONPATH="/opt/mat-agent-tools" \
         -e EXTRA_CONFIG_JSON="${EXTRA_CONFIG_JSON:-}" \
+        -e MAT_AGENT_CONFIG="${MAT_AGENT_CONFIG:-}" \
+        -e MAT_AGENT_REPLAY_DATA="${MAT_AGENT_REPLAY_DATA:-}" \
+        -e MAT_AGENT_FINETUNE_MODE="${MAT_AGENT_FINETUNE_MODE:-}" \
+        -e MAT_AGENT_LR="${MAT_AGENT_LR:-}" \
+        -e MAT_AGENT_WEIGHT_DECAY="${MAT_AGENT_WEIGHT_DECAY:-}" \
+        -e MAT_AGENT_GRAD_CLIP="${MAT_AGENT_GRAD_CLIP:-}" \
+        -e MAT_AGENT_ENERGY_WEIGHT="${MAT_AGENT_ENERGY_WEIGHT:-}" \
+        -e MAT_AGENT_FORCES_WEIGHT="${MAT_AGENT_FORCES_WEIGHT:-}" \
+        -e MAT_AGENT_STRESS_WEIGHT="${MAT_AGENT_STRESS_WEIGHT:-}" \
+        -e MAT_AGENT_REPLAY_WEIGHT="${MAT_AGENT_REPLAY_WEIGHT:-}" \
+        -e MAT_AGENT_NUM_WORKERS="${MAT_AGENT_NUM_WORKERS:-}" \
+        -e MAT_AGENT_SEED="${MAT_AGENT_SEED:-}" \
+        -e MAT_AGENT_SAVE_EVERY="${MAT_AGENT_SAVE_EVERY:-}" \
+        -e MAT_AGENT_LOG_EVERY="${MAT_AGENT_LOG_EVERY:-}" \
+        -e MAT_AGENT_RUN_NAME="${MAT_AGENT_RUN_NAME:-}" \
+        -e MAT_AGENT_ENABLE_EMA="${MAT_AGENT_ENABLE_EMA:-}" \
+        -e MAT_AGENT_EMA_DECAY="${MAT_AGENT_EMA_DECAY:-}" \
+        -e MAT_AGENT_ENABLE_SWA="${MAT_AGENT_ENABLE_SWA:-}" \
+        -e MAT_AGENT_START_SWA="${MAT_AGENT_START_SWA:-}" \
+        -e MAT_AGENT_SWA_ENERGY_WEIGHT="${MAT_AGENT_SWA_ENERGY_WEIGHT:-}" \
+        -e MAT_AGENT_SWA_FORCES_WEIGHT="${MAT_AGENT_SWA_FORCES_WEIGHT:-}" \
         -w /work \
         "$image" \
-        /bin/sh -c "$container_cmd"
-    return $?
+        /bin/sh -c "$container_cmd" > "$stage_dir/output/docker.log" 2>&1
+    local status=$?
+    if [ -d "$stage_dir/output" ]; then
+        cp -a "$stage_dir/output/." "$output_dir/"
+    fi
+    return "$status"
 }
 
 # ---------------------------------------------------------------------------

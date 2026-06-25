@@ -1,0 +1,24 @@
+datasets:
+  matpes_pbe:
+    kind: mlip
+    source: huggingface
+    repo: materialyze/matpes
+    config: pbe
+    local_manifest: data/matpes/pbe/manifest.json
+    energy_key: ref_energy
+    forces_key: ref_forces
+    visible_to_agent: true
+  matpes_r2scan:
+    kind: mlip
+    source: huggingface
+    repo: materialyze/matpes
+    config: r2scan
+    local_manifest: data/matpes/r2scan/manifest.json
+    energy_key: ref_energy
+    forces_key: ref_forces
+    visible_to_agent: true
+  matbench:
+    kind: property_prediction
+    source: matbench
+    local_manifest: data/matbench/manifest.json
+    visible_to_agent: true

@@ -36,11 +36,30 @@ RUN pip3 install --no-cache-dir \
         --trusted-host pypi.tuna.tsinghua.edu.cn \
         "ase>=3.22" "numpy>=1.23" "scipy"
 
-RUN mkdir -p /work /opt/mat-agent-tools
+# Shared data, benchmark, and playground dependencies.
+# These belong in base because data preparation and judging are model-agnostic.
+COPY requirements-data.txt /tmp/requirements-data.txt
+RUN pip3 install --no-cache-dir \
+        -i https://pypi.tuna.tsinghua.edu.cn/simple \
+        --trusted-host pypi.tuna.tsinghua.edu.cn \
+        -r /tmp/requirements-data.txt && \
+    rm /tmp/requirements-data.txt
+
+# matbench pins an old scikit-learn release that has no reliable Python 3.11
+# wheel. Install the package itself while keeping the modern dependency stack
+# from requirements-data.txt.
+RUN pip3 install --no-cache-dir \
+        -i https://pypi.tuna.tsinghua.edu.cn/simple \
+        --trusted-host pypi.tuna.tsinghua.edu.cn \
+        --no-deps "matbench==0.6"
+
+RUN mkdir -p /work /opt/mat-agent-tools /opt/mat-agent-datasets
 
 COPY tools/ase_conventions.py /opt/mat-agent-tools/
+COPY tools/verdict.py /opt/mat-agent-tools/
+COPY datasets/prep_scripts/ /opt/mat-agent-datasets/prep_scripts/
 
-ENV PYTHONPATH=/opt/mat-agent-tools
+ENV PYTHONPATH=/opt/mat-agent-tools:/opt/mat-agent-datasets
 ENV HF_ENDPOINT=https://hf-mirror.com
 
 WORKDIR /work

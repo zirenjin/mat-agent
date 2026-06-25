@@ -1,0 +1,16 @@
+tools:
+  verdict:
+    command: python3 /opt/mat-agent-tools/verdict.py
+    image: mat-agent/base:latest
+    visible_to_agent: false
+    purpose: score predictions against reference extxyz
+  prepare_matpes:
+    command: python3 /opt/mat-agent-datasets/prep_scripts/prepare_matpes.py
+    image: mat-agent/base:latest
+    visible_to_agent: true
+    purpose: download MATPES PBE/r2SCAN slices and convert them to extxyz
+  prepare_matbench:
+    command: python3 /opt/mat-agent-datasets/prep_scripts/prepare_matbench.py
+    image: mat-agent/base:latest
+    visible_to_agent: true
+    purpose: export Matbench folds as JSONL

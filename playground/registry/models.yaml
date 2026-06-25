@@ -1,0 +1,19 @@
+models:
+  mace:
+    api_dir: models/mace/api
+    supports:
+      - train
+      - inference
+      - evaluate
+  deepmd:
+    api_dir: models/deepmd/api
+    supports:
+      - train
+      - inference
+      - evaluate
+  fairchem:
+    api_dir: models/fairchem/api
+    supports:
+      - train
+      - inference
+      - evaluate

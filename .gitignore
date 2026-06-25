@@ -65,3 +65,11 @@ datasets/prep_scripts/**
 /tools/eval_ft.py
 /tools/pearson_ft.py
 /tools/run_mace_ft.sh
+
+# Runtime logs and playground run outputs
+logs/
+playground/runs/
+playground/scripts/__pycache__/
+# Downloaded MATPES parquet/cache files
+data/**/*.parquet
+data/**/_cache/

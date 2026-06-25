@@ -121,9 +121,17 @@ check_docker_version() {
     ok "docker version: $ver"
 }
 
+needs_gpu_runtime() {
+    ! $SKIP_DEEPMD || ! $SKIP_MACE || ! $SKIP_FAIRCHEM
+}
+
 check_nvidia_runtime() {
+    if ! needs_gpu_runtime; then
+        ok "nvidia runtime: skipped (base-only build)"
+        return
+    fi
     if ! docker info --format '{{json .Runtimes}}' 2>/dev/null | grep -q nvidia; then
-        fail "nvidia-container-runtime not configured. Install nvidia-container-toolkit."
+        fail "nvidia-container-runtime not configured. Install nvidia-container-toolkit, or skip GPU model images."
     fi
     ok "nvidia runtime detected"
 }
@@ -199,8 +207,8 @@ verify_base() {
     echo "  -> Sanity check mat-agent/base..."
     docker run --rm mat-agent/base:latest python3 -c "
 from ase_conventions import set_ref, get_ref_energy, REF_ENERGY_KEY, REF_FORCES_KEY
-import ase; import numpy; import scipy
-print('base OK: ase_conventions + ase + numpy + scipy importable')
+import ase; import numpy; import scipy; import datasets; import pymatgen; import matbench; import matminer
+print('base OK: tools + ase/numpy/scipy + datasets/pymatgen/matbench/matminer importable')
 " || fail "mat-agent/base verification FAILED"
     ok "mat-agent/base: verification OK"
 }

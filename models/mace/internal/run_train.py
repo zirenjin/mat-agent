@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""MACE fine-tuning — container entry point."""
+"""MACE fine-tuning — container entry point.
+
+The public bash API passes a foundation checkpoint plus extxyz data. This
+runner keeps MACE-specific choices here: canonical label keys, force-dominated
+loss, optional SWA, and output locations.
+"""
 from __future__ import annotations
 import argparse, subprocess, sys, os
 from pathlib import Path
@@ -21,6 +26,20 @@ def parse_args():
     return p.parse_args()
 
 
+def env(name, default=""):
+    return os.environ.get(name, default)
+
+
+def env_float(name, default):
+    value = env(name)
+    return default if value == "" else value
+
+
+def env_int(name, default):
+    value = env(name)
+    return default if value == "" else str(value)
+
+
 def main():
     args = parse_args()
     out = Path(args.output_dir)
@@ -32,26 +51,73 @@ def main():
             sys.exit(2)
 
     print("=== MACE fine-tuning ===", file=sys.stderr)
+    name = env("MAT_AGENT_RUN_NAME", "mace_ft")
+    lr = env_float("MAT_AGENT_LR", "0.005")
+    weight_decay = env_float("MAT_AGENT_WEIGHT_DECAY", "5e-7")
+    energy_weight = env_float("MAT_AGENT_ENERGY_WEIGHT", "1")
+    forces_weight = env_float("MAT_AGENT_FORCES_WEIGHT", "1000")
+    seed = env_int("MAT_AGENT_SEED", "1234")
+    grad_clip = env("MAT_AGENT_GRAD_CLIP")
+
     cmd = [
         "mace_run_train",
-        "--name", "mace_ft",
-        "--model", args.model_path,
+        "--name", name,
+        "--foundation_model", args.model_path,
+        "--multiheads_finetuning", "False",
+        "--E0s", "average",
         "--train_file", args.train_data,
         "--valid_file", args.val_data,
+        "--energy_key", "ref_energy",
+        "--forces_key", "ref_forces",
+        "--loss", "weighted",
+        "--energy_weight", str(energy_weight),
+        "--forces_weight", str(forces_weight),
+        "--lr", str(lr),
+        "--weight_decay", str(weight_decay),
         "--max_num_epochs", str(args.epochs),
         "--batch_size", str(args.batch_size),
+        "--valid_batch_size", str(max(args.batch_size, 8)),
         "--device", args.device,
         "--default_dtype", "float64",
-        "--output_dir", str(out),
+        "--seed", str(seed),
+        "--eval_interval", "1",
+        "--log_dir", str(out / "logs"),
+        "--model_dir", str(out),
+        "--checkpoints_dir", str(out / "checkpoints"),
+        "--results_dir", str(out / "results"),
+        "--save_cpu",
         "--restart_latest",
     ]
+    if args.test_data and Path(args.test_data).exists():
+        cmd.extend(["--test_file", args.test_data])
+    if grad_clip:
+        cmd.extend(["--clip_grad", str(grad_clip)])
+    if env("MAT_AGENT_ENABLE_SWA", "1") != "0" and args.epochs >= 8:
+        start_swa = env_int("MAT_AGENT_START_SWA", str(max(1, int(args.epochs * 0.8))))
+        swa_energy_weight = env_float("MAT_AGENT_SWA_ENERGY_WEIGHT", "1000")
+        swa_forces_weight = env_float("MAT_AGENT_SWA_FORCES_WEIGHT", "100")
+        cmd.extend([
+            "--swa",
+            "--start_swa", str(start_swa),
+            "--swa_energy_weight", str(swa_energy_weight),
+            "--swa_forces_weight", str(swa_forces_weight),
+        ])
+    if env("MAT_AGENT_ENABLE_EMA", "1") != "0":
+        cmd.extend(["--ema", "--ema_decay", env_float("MAT_AGENT_EMA_DECAY", "0.99")])
     print("[mace] " + " ".join(cmd), file=sys.stderr)
     result = subprocess.run(cmd, capture_output=False)
+    ft_model = str(out / f"{name}.model")
     if result.returncode != 0:
-        print(f"FATAL: mace_run_train failed with exit {result.returncode}", file=sys.stderr)
-        sys.exit(2)
+        if Path(ft_model).is_file():
+            print(
+                f"WARNING: mace_run_train exited {result.returncode}, "
+                f"but model exists at {ft_model}; continuing",
+                file=sys.stderr,
+            )
+        else:
+            print(f"FATAL: mace_run_train failed with exit {result.returncode}", file=sys.stderr)
+            sys.exit(2)
 
-    ft_model = str(out / "mace_ft.model")
     print(f"TRAIN OK (model: {ft_model})", file=sys.stderr)
 
     # Post-train inference if test data provided

@@ -31,6 +31,28 @@ public surface is the bash API under `models/*/api`.
 Large datasets, checkpoints, experiment runs, result files, and one-off data
 preparation scripts are intentionally kept out of Git.
 
+
+## Playground
+
+`playground/` is the agent-facing orchestration layer above the stable
+`models/*/api` commands. It keeps lightweight registries for datasets, models,
+tools, and tasks, plus scripts for repeatable preparation, fine-tuning, and
+benchmark probes.
+
+```text
+playground/
+├── README.md                 # Playground overview
+├── registry/                 # Agent-visible dataset/model/task/tool manifests
+└── scripts/                  # Reusable experiment adapters
+```
+
+Generated runs live under `playground/runs/` and are ignored by Git. Keep large
+artifacts, downloaded data, logs, checkpoints, and leaderboard outputs out of
+source control; commit only reusable scripts, registries, and documentation.
+
+See `docs/agent_infra.md` and `docs/data_ingestion.md` for the playground
+contracts.
+
 ## Docker Images
 
 The maintained images are:

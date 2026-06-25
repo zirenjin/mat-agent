@@ -12,7 +12,9 @@ __pycache__/
 
 # Data files (mounted at runtime, not baked into images)
 data/
-datasets/
+datasets/*
+!datasets/prep_scripts/
+!datasets/prep_scripts/*.py
 
 # Checkpoints (mounted at runtime)
 models/dpa/

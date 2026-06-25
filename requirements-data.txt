@@ -1,0 +1,8 @@
+ase
+datasets
+huggingface_hub
+matminer
+numpy
+pandas
+pymatgen
+scikit-learn
