@@ -69,6 +69,7 @@ datasets/prep_scripts/**
 # Runtime logs and playground run outputs
 logs/
 playground/runs/
+playground/cache/
 playground/scripts/__pycache__/
 # Downloaded MATPES parquet/cache files
 data/**/*.parquet
