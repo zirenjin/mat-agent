@@ -47,7 +47,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-test", type=int, default=0)
     p.add_argument("--val-fraction", type=float, default=0.2)
     p.add_argument("--seed", type=int, default=17)
-    p.add_argument("--feature-sets", nargs="+", default=["structure", "structure+mlip", "mlip"])
+    p.add_argument(
+        "--feature-sets",
+        nargs="+",
+        default=["structure", "chem", "structure+chem", "structure+mlip_aug", "structure+chem+mlip_aug", "mlip_aug"],
+    )
     return p.parse_args()
 
 
@@ -95,6 +99,26 @@ def structure_features(structures: list[Any], cache_path: Path) -> np.ndarray:
     np.savez_compressed(cache_path, x=x)
     return x
 
+
+
+def chem_features(structures: list[Any], cache_path: Path) -> np.ndarray:
+    if cache_path.is_file():
+        print(f"[adapter] cache hit {cache_path}", flush=True)
+        return np.load(cache_path)["x"]
+    from matminer.featurizers.composition import ElementProperty, Stoichiometry, ValenceOrbital
+    featurizers = [Stoichiometry(), ElementProperty.from_preset("magpie"), ValenceOrbital()]
+    rows = []
+    for structure in tqdm(structures, desc=f"features/{cache_path.stem}"):
+        comp = structure.composition
+        vals: list[float] = []
+        for featurizer in featurizers:
+            vals.extend(float(v) for v in featurizer.featurize(comp))
+        rows.append(vals)
+    x = np.asarray(rows, dtype=np.float64)
+    x = np.nan_to_num(x, nan=0.0, posinf=0.0, neginf=0.0)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(cache_path, x=x)
+    return x
 
 def _one_structure_features(structure: Any) -> list[float]:
     comp = structure.composition
@@ -169,6 +193,33 @@ def _compute_mace_block(model: MlipModel, structures: list[Any], cache: Path, de
     np.savez_compressed(cache, x=x)
     return x
 
+
+
+def augment_mlip_features(x: np.ndarray, n_models: int) -> np.ndarray:
+    """Add committee-style cross-model agreement features to per-model MLIP blocks."""
+    block = 7
+    if n_models < 2 or x.shape[1] != n_models * block:
+        return x
+    cube = x.reshape(x.shape[0], n_models, block)
+    summary_cols = []
+    # Per-atom energy and force statistics are the useful cross-model signals;
+    # total energy is size-coupled and already available in the raw block.
+    for col in [0, 2, 3, 4, 5, 6]:
+        vals = cube[:, :, col]
+        summary_cols.extend([
+            np.mean(vals, axis=1),
+            np.std(vals, axis=1),
+            np.min(vals, axis=1),
+            np.max(vals, axis=1),
+            np.max(vals, axis=1) - np.min(vals, axis=1),
+        ])
+    for col in [0, 6]:
+        vals = cube[:, :, col]
+        for i in range(n_models):
+            for j in range(i + 1, n_models):
+                summary_cols.append(vals[:, i] - vals[:, j])
+                summary_cols.append(np.abs(vals[:, i] - vals[:, j]))
+    return np.concatenate([x, np.vstack(summary_cols).T], axis=1)
 
 def build_regressors(seed: int) -> dict[str, Any]:
     from sklearn.ensemble import ExtraTreesRegressor, HistGradientBoostingRegressor, RandomForestRegressor
@@ -272,12 +323,24 @@ def main() -> None:
             y_test = np.asarray([float(test_outputs.loc[idx]) for idx, _ in test_items], dtype=np.float64)
             struct_train = structure_features(train_structures, cache_dir/task_name/f"fold_{fold}"/f"train_structure_{train_sig}.npz")
             struct_test = structure_features(test_structures, cache_dir/task_name/f"fold_{fold}"/f"test_structure_{test_sig}.npz")
+            chem_train = chem_features(train_structures, cache_dir/task_name/f"fold_{fold}"/f"train_chem_{train_sig}.npz")
+            chem_test = chem_features(test_structures, cache_dir/task_name/f"fold_{fold}"/f"test_chem_{test_sig}.npz")
             mlip_train = mlip_features(models, train_structures, cache_dir, task_name, fold, f"train_{train_sig}", args.device, args.dtype)
             mlip_test = mlip_features(models, test_structures, cache_dir, task_name, fold, f"test_{test_sig}", args.device, args.dtype)
+            mlip_aug_train = augment_mlip_features(mlip_train, len(models))
+            mlip_aug_test = augment_mlip_features(mlip_test, len(models))
+            structure_chem_train = np.concatenate([struct_train, chem_train], axis=1)
+            structure_chem_test = np.concatenate([struct_test, chem_test], axis=1)
             feature_blocks = {
                 "structure": (struct_train, struct_test),
+                "chem": (chem_train, chem_test),
+                "structure+chem": (structure_chem_train, structure_chem_test),
                 "mlip": (mlip_train, mlip_test),
+                "mlip_aug": (mlip_aug_train, mlip_aug_test),
                 "structure+mlip": (np.concatenate([struct_train, mlip_train], axis=1), np.concatenate([struct_test, mlip_test], axis=1)),
+                "structure+mlip_aug": (np.concatenate([struct_train, mlip_aug_train], axis=1), np.concatenate([struct_test, mlip_aug_test], axis=1)),
+                "chem+mlip_aug": (np.concatenate([chem_train, mlip_aug_train], axis=1), np.concatenate([chem_test, mlip_aug_test], axis=1)),
+                "structure+chem+mlip_aug": (np.concatenate([structure_chem_train, mlip_aug_train], axis=1), np.concatenate([structure_chem_test, mlip_aug_test], axis=1)),
             }
             fold_out: dict[str, Any] = {"n_train": len(y_train), "n_test": len(y_test), "feature_sets": {}}
             best_name = None
