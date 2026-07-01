@@ -1,0 +1,78 @@
+# cff-version: 1.2.0
+message: If you use this software, please cite it as below.
+title: Matbench Discovery
+subtitle: An evaluation framework for machine learning crystal stability prediction
+authors:
+  - given-names: Janosh
+    family-names: Riebesell
+    affiliation: University of Cambridge, LBNL
+    email: janosh.riebesell@gmail.com
+    orcid: https://orcid.org/0000-0001-5233-3462
+    corresponding: true
+    affil_key: 1, 2
+    github: https://github.com/janosh
+  - given-names: Rhys
+    family-names: Goodall
+    affiliation: University of Cambridge
+    orcid: https://orcid.org/0000-0002-6589-1700
+    affil_key: 1
+    github: https://github.com/comprhys
+  - given-names: Philipp
+    family-names: Benner
+    affiliation: German Federal Institute of Materials Research and Testing
+    orcid: 0000-0002-0912-8137
+    affil_key: 3
+    github: https://github.com/pbenner
+  - given-names: Yuan
+    family-names: Chiang
+    affiliation: Lawrence Berkeley National Lab, UC Berkeley
+    orcid: 0000-0002-4017-7084
+    affil_key: 2, 5
+    github: https://github.com/chiang-yuan
+  - given-names: Bowen
+    family-names: Deng
+    affiliation: Lawrence Berkeley National Lab, UC Berkeley
+    orcid: 0000-0002-5720-5299
+    affil_key: 2, 5
+    github: https://github.com/bowen-deng
+  - given-names: Alpha
+    family-names: Lee
+    orcid: 0000-0002-9616-3108
+    affiliation: University of Cambridge
+    affil_key: 1
+    github: https://github.com/alphaleegroup
+  - given-names: Gerbrand
+    family-names: Ceder
+    affiliation: Lawrence Berkeley National Lab
+    orcid: 0000-0001-9275-3605
+    affil_key: 2
+  - given-names: Mark
+    family-names: Asta
+    affiliation: Lawrence Berkeley National Lab
+    orcid: 0000-0002-8968-321X
+    affil_key: 2
+  - given-names: Anubhav
+    family-names: Jain
+    orcid: 0000-0001-5893-9967
+    affiliation: Lawrence Berkeley National Lab
+    affil_key: 2
+    github: https://github.com/computron
+  - given-names: Kristin
+    family-names: Persson
+    orcid: 0000-0003-2495-5509
+    affiliation: Lawrence Berkeley National Lab
+    affil_key: 2, 4, 5
+affiliations:
+  - Cavendish Laboratory, University of Cambridge, UK
+  - Lawrence Berkeley National Lab, Berkeley, USA
+  - Federal Institute of Materials Research and Testing (BAM), Germany
+  - Molecular Foundry, Lawrence Berkeley National Lab, USA
+  - Department of Materials Science and Engineering, University of California - Berkeley, USA
+license: MIT
+license-url: https://github.com/janosh/matbench-discovery/blob/-/license"
+repository-code: https://github.com/janosh/matbench-discovery
+type: software
+url: https://github.com/janosh/matbench-discovery
+doi: https://doi.org/10.1038/s42256-025-01055-1
+version: 1.3.1 # replace with whatever Matbench Discovery version you use
+date-released: "2023-08-28" # date of arXiv submission

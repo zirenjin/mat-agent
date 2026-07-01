@@ -1,0 +1,183 @@
+[project]
+name = "matbench-discovery"
+version = "1.3.1"
+description = "A benchmark for machine learning models on inorganic crystal"
+authors = [{ name = "Janosh Riebesell", email = "janosh.riebesell@gmail.com" }]
+readme = "readme.md"
+license = { file = "license" }
+keywords = [
+  "force field",
+  "geometry optimization",
+  "high-throughput crystal structure stability prediction",
+  "interatomic potential",
+  "lattice vibrations",
+  "machine learning",
+  "materials discovery",
+  "phonons",
+  "thermal conductivity",
+]
+classifiers = [
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering :: Chemistry",
+  "Topic :: Scientific/Engineering :: Physics",
+]
+requires-python = ">=3.11"
+dependencies = [
+  "ase>=3.28",
+  "filelock>=3.29",
+  "h5py>=3.11",
+  "numpy>=2,<3",
+  "pandas>=3,<4",
+  "plotly>=6.7",
+  "pymatgen>=2026.5.4",
+  # strict pin on pymatviz due to https://github.com/janosh/matbench-discovery/issues/209
+  "pymatviz[export]==0.18.0",
+  "ruamel.yaml>=0.19.1",
+  "scikit-learn>=1.8",
+  "scipy>=1.17.1",
+  "tqdm>=4.67.3",
+  "wandb>=0.27",
+]
+
+[project.urls]
+Homepage = "https://janosh.github.io/matbench-discovery"
+Repo = "https://github.com/janosh/matbench-discovery"
+Package = "https://pypi.org/project/matbench-discovery"
+
+[project.optional-dependencies]
+test = ["matbench-discovery[phonons]", "pytest-cov>=5", "pytest>=8.1"]
+# how to specify git deps: https://stackoverflow.com/a/73572379
+running-models = [
+  # aviary commented-out since dep on git repo raises "Invalid value for requires_dist"
+  # when attempting PyPI publish
+  # "aviary@git+https://github.com/CompRhys/aviary",
+  "alignn>=2024.1.14",
+  "chgnet>=0.3.0",
+  "jarvis-tools",
+  "m3gnet>=0.2.4",
+  "mace-torch>=0.3.6",
+  "maml>=2023.9.9",
+  "megnet>=1.3.2",
+  "moyopy>=0.10.0",
+]
+fetch-wbm-data = ["gdown>=5.2"]
+# phono3py >=3.31 removed the MS-SMM19 RTA method used for Wigner transport.
+phonons = ["phono3py==3.30.0", "phonopy>=2.35"]
+# symmetry-analysis scripts + tests depend on moyopy
+symmetry = ["moyopy>=0.12"]
+
+[build-system]
+requires = ["uv_build>=0.11.18"]
+build-backend = "uv_build"
+
+[tool.uv]
+managed = false # stop uv run from creating a uv.lock
+
+[tool.uv.build-backend]
+module-name = "matbench_discovery"
+module-root = ""
+source-include = ["matbench_discovery/**/*.yml", "models/**/*.yml"]
+
+[tool.ruff]
+output-format = "concise"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+  "C408", # unnecessary-collection-call
+  "C901",
+  "COM812",
+  "D205", # blank-line-after-summary
+  "EM101",
+  "EM102",
+  "FIX002",
+  "INP001",
+  "PLC0415",
+  "PLR2004",
+  "PLR0913",
+  "PLR0915",
+  "PLR0912",
+  "PT006", # pytest-parametrize-names-wrong-type
+  "PTH",
+  "S108",
+  "S603", # subprocess-without-shell-equals-true
+  "T201",
+  "TD",
+  "TRY003",
+  "TRY301",
+]
+pydocstyle.convention = "google"
+isort.split-on-trailing-comma = false
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D103", "FBT001", "S101"]
+"scripts/*" = ["D103", "D100", "D107", "D105", "ERA001"]
+"models/*" = ["D102", "D103", "D100", "D107", "D105", "ERA001"]
+"data/*" = ["ERA001", "S101"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-p no:warnings -m 'not slow'"
+markers = ["slow: tests marked slow are skipped by default (unskip with pytest -m slow)"]
+
+[tool.codespell]
+ignore-words-list = "nd,te,fpr,matris,titel"
+
+[tool.ty.terminal]
+output-format = "concise"
+
+[tool.ty.rules]
+# heavy optional model deps (chgnet, mace, alignn, ...) aren't installable in the
+# pre-commit hook environment
+unresolved-import = "ignore"
+unused-ignore-comment = "ignore"
+
+[dependency-groups]
+dev = ["prek>=0.4.5", "ty>=0.0.54"]
+
+[tool.typos.files]
+extend-exclude = ["*.patch"]
+
+[tool.typos.default]
+locale = "en-us"
+extend-ignore-re = [
+  "`[0-9a-f]{7,40}`", # Git commit SHAs in backticks
+]
+extend-ignore-identifiers-re = [
+  "\\balph_\\w+\\b", # alph_* identifiers
+  "\\bi?[Cc]om[Ff]ormer\\w*\\b", # (i)Comformer, comformer + Config suffix
+  "\\w*[Cc]ontracter\\w*\\b", # *Contracter* variations
+  "\\w*strat\\w*\\b", # *strat* variations
+]
+
+[tool.typos.default.extend-words]
+Skelton = "Skelton" # Names
+Ono = "Ono"
+Noe = "Noe"
+Vaid = "Vaid"
+AIMD = "AIMD" # ab-initio molecular dynamics
+aimd = "aimd"
+Ba = "Ba" # Chemical element: Barium
+ba = "ba"
+Commun = "Commun" # Journal: Commun, Comput
+Comput = "Comput"
+Formate = "Formate" # Chemistry: formate(s)
+Formates = "Formates"
+Nd = "Nd" # Chemical element: Neodymium
+nd = "nd"
+MatRIS = "MatRIS" # Model name
+matris = "matris"
+titel = "titel"
+
+[tool.typos.default.extend-identifiers]
+FPR = "FPR" # False Positive Rate
+fpr = "fpr"
+MATRIS_PKG = "MATRIS_PKG" # MatRIS dependency
+MATRIS_DEPS = "MATRIS_DEPS"

@@ -1,0 +1,6 @@
+guardrails:
+  - Keep benchmark-specific tasks and hidden labels out of this repository.
+  - Prefer model execution through models/<model>/api wrappers.
+  - Write generated runs under ignored run directories.
+  - Record experiment intent, inputs, outputs, and metrics as artifacts.
+  - Use smoke runs before expensive full runs when exploring new workflows.

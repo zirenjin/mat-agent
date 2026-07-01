@@ -1,52 +1,27 @@
 # Agent Infrastructure
 
-`mat-agent` is organized around a stable model API plus a lightweight
-playground for agent-facing orchestration.
+`mat-agent` is organized around stable model APIs plus a reusable Materials
+CodeAct scaffold.
 
 ## Layers
 
 1. `models/*/api`: stable host-side commands for training, inference, and
    evaluation.
-2. `tools/` and `datasets/prep_scripts/`: shared conversion, scoring, and data
-   preparation utilities.
-3. `playground/`: registries and reusable scripts that let an agent discover
-   tasks and run repeatable experiments.
+2. `tools/`: essential shared utilities such as canonical ASE field handling,
+   verdict scoring, Docker helpers, and runtime diagnostics.
+3. `mat_agent/`: reusable data, compute, MLIP, and research planes for
+   code-acting agents.
+4. `playground/`: agent-facing registries and ignored local run artifacts.
+5. `skills/`: operational instructions for common framework workflows.
 
-The model API is the public execution boundary. Playground scripts may compose
-API calls, but they should not bypass the model-specific wrappers for training
-or evaluation.
+The model API is the public execution boundary. Scaffold helpers may compose API
+calls, but they should not bypass the model-specific wrappers for training,
+inference, or evaluation.
 
-## Base Runtime Contract
+## Boundary
 
-`mat-agent/base:latest` should provide shared, model-agnostic functionality:
-
-- ASE and canonical `ref_*` / `pred_*` helpers
-- `tools/verdict.py`
-- data preparation dependencies such as `datasets`, `pymatgen`, `matminer`, and
-  `matbench`
-- dataset preparation scripts under `/opt/mat-agent-datasets/prep_scripts`
-
-Model images add backend-specific runtimes such as MACE, DeePMD, or FairChem.
-If a playground adapter needs benchmark/data dependencies inside a model image,
-provide an explicit image variant or Dockerfile and document it in the
-playground registry.
-
-## Playground Contract
-
-An agent should interact with the playground through structured files:
-
-- `playground/registry/datasets.yaml`
-- `playground/registry/models.yaml`
-- `playground/registry/tasks.yaml`
-- `playground/registry/tools.yaml`
-- reusable scripts in `playground/scripts/`
-
-Generated state must stay out of Git:
-
-- `playground/runs/`
-- `logs/`
-- downloaded data under `data/`
-- checkpoints and model outputs
+This repository is framework-only. Do not commit benchmark tasks, hidden labels,
+paper baselines, scaffold ablation configs, or task-specific scoring.
 
 ## Extension Points
 
@@ -59,8 +34,5 @@ models/<model>/api/inference.sh
 models/<model>/internal/
 ```
 
-Add a dataset by implementing a prep script that writes a manifest plus split
-artifacts under `data/<dataset>/`.
-
-Add a task by registering it in `playground/registry/tasks.yaml` and pointing it
-to a reusable script in `playground/scripts/`.
+Add reusable agent affordances under `mat_agent/planes/<plane>/`. Add operational
+instructions under `skills/` when a workflow should be discoverable by agents.

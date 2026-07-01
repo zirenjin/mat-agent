@@ -51,6 +51,11 @@ datasets/**/*.xyz
 datasets/**/*.csv
 datasets/**/*.npz
 
+
+# Vendored Matbench Discovery source data and tiny upstream fixtures
+!third_party/matbench-discovery/data/**/*.csv.gz
+!third_party/matbench-discovery/tests/files/*.csv.gz
+
 # Keep lightweight dataset metadata if useful
 data/**/manifest.json
 datasets/**/manifest.json

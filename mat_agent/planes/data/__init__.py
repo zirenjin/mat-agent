@@ -1,0 +1,1 @@
+"""Materials CodeAct scaffold package."""

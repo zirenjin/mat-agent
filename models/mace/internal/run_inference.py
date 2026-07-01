@@ -2,7 +2,7 @@
 """MACE inference container entry point.
 
 Purpose: run MACE predictions and emit unified pred_energy/pred_forces extxyz.
-Inputs: local MACE checkpoint, MHC manifest directory, and input extxyz.
+Inputs: local MACE checkpoint or committee manifest directory, and input extxyz.
 Outputs: extxyz with canonical predictions and optional committee uncertainty.
 Dependencies: MACE, ASE, numpy, json, argparse.
 """
@@ -19,7 +19,7 @@ import numpy as np
 from ase.io import read, write
 from ase_conventions import set_pred
 
-MHC_ERROR = "ERROR: --uncertainty requires a MHC checkpoint. Use prepare_mhc_explorer.py first."
+MHC_ERROR = "ERROR: --uncertainty requires a checkpoint directory or mhc_manifest.json with at least two heads."
 
 
 def parse_args() -> argparse.Namespace:

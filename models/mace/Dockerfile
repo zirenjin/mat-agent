@@ -24,12 +24,6 @@ RUN pip3 install --no-cache-dir \
         -r /tmp/requirements-data.txt \
     && rm /tmp/requirements-data.txt
 
-RUN pip3 install --no-cache-dir \
-        -i https://pypi.tuna.tsinghua.edu.cn/simple \
-        --trusted-host pypi.tuna.tsinghua.edu.cn \
-        --no-deps "matbench==0.6" \
-    && python3 -c "import pymatgen, matbench, matminer, sklearn; print(\"matbench deps OK\")"
-
 COPY models/mace/internal /opt/internal
 ENV PYTHONPATH=/opt/mat-agent-tools:/opt/internal
 WORKDIR /work

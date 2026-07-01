@@ -106,7 +106,7 @@ def main() -> None:
         if uncertainty:
             recommendation = f"Training converged. val_force_MAE={force_mae:.4f} eV/A; {uncertainty['high_uncertainty_fraction']:.1%} of validation structures exceed uncertainty threshold {args.uncertainty_threshold:.3f}."
         else:
-            recommendation = f"Training converged. val_force_MAE={force_mae:.4f} eV/A. Consider querying oracle for high-uncertainty structures if active learning is active."
+            recommendation = f"Evaluation complete. val_force_MAE={force_mae:.4f} eV/A. Review data coverage and uncertainty diagnostics before changing the workflow."
         write_json(args.output, {
             "model": args.model,
             "checkpoint_path": args.checkpoint_path,

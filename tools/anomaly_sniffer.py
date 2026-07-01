@@ -3,7 +3,7 @@
 
 The sniffer turns raw training/runtime logs plus the latest trajectory cache into
 structured JSON that an upstream agent can use for retry, data cleaning, or
-active-learning decisions.
+experiment logging decisions.
 """
 from __future__ import annotations
 

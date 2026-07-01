@@ -1,52 +1,21 @@
 tools:
   verdict:
-    command: python3 /opt/mat-agent-tools/verdict.py
-    image: mat-agent/base:latest
-    visible_to_agent: false
-    purpose: score predictions against reference extxyz
-  prepare_matpes:
-    command: python3 /opt/mat-agent-datasets/prep_scripts/prepare_matpes.py
+    command: python3 tools/verdict.py
     image: mat-agent/base:latest
     visible_to_agent: true
-    purpose: download MATPES PBE/r2SCAN slices and convert them to extxyz
-  prepare_matbench:
-    command: python3 /opt/mat-agent-datasets/prep_scripts/prepare_matbench.py
-    image: mat-agent/base:latest
-    visible_to_agent: true
-    purpose: export Matbench folds as JSONL
-
+    purpose: score canonical pred_* fields against ref_* labels
   anomaly_sniffer:
     command: python3 tools/anomaly_sniffer.py
     image: mat-agent/base:latest
     visible_to_agent: true
-    purpose: diagnose MLIP crashes and flag physical invariant violations
-  data_bridge_converter:
-    command: python3 playground/scripts/data_bridge_converter.py
-    image: mat-agent/base:latest
+    purpose: classify runtime logs and simple physical failure diagnostics
+  run_logged_docker:
+    command: bash tools/run_logged_docker.sh
+    image: host
     visible_to_agent: true
-    purpose: convert pred_* pseudo-label extxyz files into worker-model training datasets
+    purpose: launch docker commands with stable log and metadata artifacts
   runner_controller:
-    command: python3 playground/scripts/runner_controller.py
+    command: python3 tools/runner_controller.py
     image: host
     visible_to_agent: true
-    purpose: stream training telemetry and apply deterministic retry/self-healing actions
-  prepare_mhc_explorer:
-    command: python3 tools/prepare_mhc_explorer.py
-    image: host
-    visible_to_agent: true
-    purpose: prepare a MACE committee explorer manifest for uncertainty inference
-  active_learning:
-    command: python3 tools/active_learning.py
-    image: mat-agent/base:latest
-    visible_to_agent: true
-    purpose: select high-uncertainty candidate structures with diversity balancing
-  oracle_label:
-    command: python3 tools/oracle_label.py
-    image: host
-    visible_to_agent: true
-    purpose: call an MLIP API as a pseudo-oracle and emit clean ref_* labels
-  active_learning_loop:
-    command: python3 tools/active_learning_loop.py
-    image: host
-    visible_to_agent: true
-    purpose: run one full uncertainty-selection-label-train-evaluate active learning round
+    purpose: stream training telemetry and classify recoverable runtime failures

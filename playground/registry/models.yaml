@@ -1,19 +1,103 @@
 models:
   mace:
+    family: equivariant_message_passing
     api_dir: models/mace/api
-    supports:
+    implementation_dir: models/mace
+    tasks:
       - train
       - inference
       - evaluate
+      - finetune
+    primary_use:
+      - general_mlip_training
+      - force_and_energy_prediction
+      - structure_relaxation
+    expected_inputs:
+      train:
+        - extxyz_with_energy_force_stress_when_available
+        - split_manifest_or_explicit_train_valid_paths
+      inference:
+        - extxyz_or_ase_readable_structures
+    expected_outputs:
+      - energies
+      - forces
+      - optional_stress
+      - checkpoints
+      - metrics_json
+    selection_hints:
+      - Prefer when the task needs a broadly usable MLIP with energy/force training.
+      - Check data units, force labels, and stress availability before training.
+      - Use smoke runs before launching long GPU jobs.
+    constraints:
+      - Requires compatible Python/PyTorch/CUDA stack.
+      - Training quality depends strongly on data coverage and split design.
+
   deepmd:
+    family: local_descriptor_neural_potential
     api_dir: models/deepmd/api
-    supports:
+    implementation_dir: models/deepmd
+    tasks:
       - train
       - inference
       - evaluate
+      - finetune
+    primary_use:
+      - molecular_dynamics_ready_mlip
+      - force_and_energy_prediction
+    expected_inputs:
+      train:
+        - deepmd_system_or_converted_extxyz
+        - train_valid_split
+      inference:
+        - deepmd_system_or_supported_structure_format
+    expected_outputs:
+      - energies
+      - forces
+      - checkpoints
+      - metrics_json
+    selection_hints:
+      - Prefer when downstream workflows already expect DeePMD-compatible artifacts.
+      - Validate data conversion carefully before training.
+    constraints:
+      - Requires DeePMD runtime and compatible tensor backend.
+      - Format conversion is often the main failure point.
+
   fairchem:
+    family: pretrained_ocp_style_potential
     api_dir: models/fairchem/api
-    supports:
-      - train
+    implementation_dir: models/fairchem
+    tasks:
       - inference
       - evaluate
+      - finetune
+    primary_use:
+      - pretrained_materials_inference
+      - adsorption_or_catalysis_style_structures
+      - checkpoint_based_evaluation
+    expected_inputs:
+      inference:
+        - ase_readable_structures
+        - checkpoint_or_model_name
+      evaluate:
+        - labeled_structure_set
+    expected_outputs:
+      - energies
+      - forces
+      - metrics_json
+    selection_hints:
+      - Prefer when a pretrained checkpoint is available and the target chemistry is close to its training regime.
+      - Inspect checkpoint provenance before trusting transfer performance.
+    constraints:
+      - Requires checkpoint availability and matching fairchem runtime.
+      - Out-of-domain structures need explicit validation.
+
+model_selection_record:
+  required_fields:
+    - task_goal
+    - candidate_models_considered
+    - selected_model
+    - evidence_for_selection
+    - rejected_alternatives
+    - data_requirements_checked
+    - compute_requirements_checked
+  write_to: playground/runs/<run_id>/model_selection.yaml
