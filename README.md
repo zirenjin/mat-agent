@@ -32,10 +32,11 @@ mat_agent/planes/research   generic experiment logs, comparisons, reports
 
 Operational instructions live under `skills/`:
 
-- `skills/inference/SKILL.md`
-- `skills/evaluation/SKILL.md`
-- `skills/logging/SKILL.md`
-- `skills/matbench_discovery/SKILL.md`
+- `skills/training.md`
+- `skills/inference.md`
+- `skills/evaluation.md`
+- `skills/logging.md`
+- `skills/matbench_discovery.md`
 
 ## Boundary
 
