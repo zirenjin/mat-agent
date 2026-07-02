@@ -1,103 +1,63 @@
-models:
+# Agent-visible registry of model interfaces provided by this framework.
+# This file is intentionally factual: it lists local APIs and external metadata
+# sources, but does not encode model preferences or selection policy.
+
+framework_model_apis:
   mace:
-    family: equivariant_message_passing
     api_dir: models/mace/api
     implementation_dir: models/mace
-    tasks:
-      - train
-      - inference
-      - evaluate
-      - finetune
-    primary_use:
-      - general_mlip_training
-      - force_and_energy_prediction
-      - structure_relaxation
-    expected_inputs:
-      train:
-        - extxyz_with_energy_force_stress_when_available
-        - split_manifest_or_explicit_train_valid_paths
-      inference:
-        - extxyz_or_ase_readable_structures
-    expected_outputs:
-      - energies
-      - forces
-      - optional_stress
-      - checkpoints
+    commands:
+      train: models/mace/api/train.sh
+      inference: models/mace/api/inference.sh
+      evaluate: models/mace/api/evaluate.sh
+    artifact_types:
+      - checkpoint_or_model_file
       - metrics_json
-    selection_hints:
-      - Prefer when the task needs a broadly usable MLIP with energy/force training.
-      - Check data units, force labels, and stress availability before training.
-      - Use smoke runs before launching long GPU jobs.
-    constraints:
-      - Requires compatible Python/PyTorch/CUDA stack.
-      - Training quality depends strongly on data coverage and split design.
+      - prediction_file
 
   deepmd:
-    family: local_descriptor_neural_potential
     api_dir: models/deepmd/api
     implementation_dir: models/deepmd
-    tasks:
-      - train
-      - inference
-      - evaluate
-      - finetune
-    primary_use:
-      - molecular_dynamics_ready_mlip
-      - force_and_energy_prediction
-    expected_inputs:
-      train:
-        - deepmd_system_or_converted_extxyz
-        - train_valid_split
-      inference:
-        - deepmd_system_or_supported_structure_format
-    expected_outputs:
-      - energies
-      - forces
-      - checkpoints
+    commands:
+      train: models/deepmd/api/train.sh
+      inference: models/deepmd/api/inference.sh
+      evaluate: models/deepmd/api/evaluate.sh
+    artifact_types:
+      - checkpoint_or_model_file
       - metrics_json
-    selection_hints:
-      - Prefer when downstream workflows already expect DeePMD-compatible artifacts.
-      - Validate data conversion carefully before training.
-    constraints:
-      - Requires DeePMD runtime and compatible tensor backend.
-      - Format conversion is often the main failure point.
+      - prediction_file
 
   fairchem:
-    family: pretrained_ocp_style_potential
     api_dir: models/fairchem/api
     implementation_dir: models/fairchem
-    tasks:
-      - inference
-      - evaluate
-      - finetune
-    primary_use:
-      - pretrained_materials_inference
-      - adsorption_or_catalysis_style_structures
-      - checkpoint_based_evaluation
-    expected_inputs:
-      inference:
-        - ase_readable_structures
-        - checkpoint_or_model_name
-      evaluate:
-        - labeled_structure_set
-    expected_outputs:
-      - energies
-      - forces
+    commands:
+      train: models/fairchem/api/train.sh
+      inference: models/fairchem/api/inference.sh
+      evaluate: models/fairchem/api/evaluate.sh
+    artifact_types:
+      - checkpoint_or_model_file
       - metrics_json
-    selection_hints:
-      - Prefer when a pretrained checkpoint is available and the target chemistry is close to its training regime.
-      - Inspect checkpoint provenance before trusting transfer performance.
-    constraints:
-      - Requires checkpoint availability and matching fairchem runtime.
-      - Out-of-domain structures need explicit validation.
+      - prediction_file
 
-model_selection_record:
-  required_fields:
+external_model_metadata:
+  matbench_discovery:
+    root: third_party/matbench-discovery/models
+    description: Upstream Matbench Discovery model cards, configs, tests, and helper scripts.
+    includes:
+      - model_yaml_files
+      - model_readmes
+      - model_test_scripts
+      - training_or_join_scripts_when_provided_upstream
+    excludes:
+      - official_prediction_archives
+    note: Use this source for broad model metadata; this framework registry only records local callable APIs.
+
+recording:
+  model_selection_record_path: playground/runs/<run_id>/model_selection.yaml
+  recommended_fields:
     - task_goal
     - candidate_models_considered
     - selected_model
-    - evidence_for_selection
-    - rejected_alternatives
+    - evidence_sources
     - data_requirements_checked
     - compute_requirements_checked
-  write_to: playground/runs/<run_id>/model_selection.yaml
