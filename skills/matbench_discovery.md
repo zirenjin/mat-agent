@@ -31,7 +31,7 @@ paper-specific scoring.
 ## Typical Use
 
 Import or inspect the upstream package from `third_party/matbench-discovery`,
-then log inputs, outputs, and metrics through the Research Plane.
+then log inputs, outputs, and metrics through `mat_agent.logging`.
 
 
 ## Data And Model Assets

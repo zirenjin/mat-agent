@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Runtime failure parsing affordances."""
+"""Runtime failure parsing helpers."""
 from __future__ import annotations
 
 from pathlib import Path

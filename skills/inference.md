@@ -7,7 +7,7 @@ Use this skill to run a maintained model API for prediction.
 1. Inspect the input structure file:
 
 ```bash
-python3 -m mat_agent.cli.main inspect-extxyz /path/to/input.extxyz
+python3 -m mat_agent.cli inspect-extxyz /path/to/input.extxyz
 ```
 
 2. Run the model API directly:

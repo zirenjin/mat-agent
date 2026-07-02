@@ -1,9 +1,10 @@
-"""Helpers for resolving the vendored Matbench Discovery source tree."""
-
+#!/usr/bin/env python3
+"""Path helpers for the vendored Matbench Discovery source tree."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from mat_agent.registry import repo_root
 
 
 @dataclass(frozen=True)
@@ -32,8 +33,7 @@ class MatbenchDiscoveryPaths:
         return self
 
 
-def default_paths(repo_root: Path | None = None) -> MatbenchDiscoveryPaths:
+def default_paths(root: str | Path | None = None) -> MatbenchDiscoveryPaths:
     """Return the default vendored Matbench Discovery paths for this repo."""
-
-    root = repo_root or Path(__file__).resolve().parents[2]
-    return MatbenchDiscoveryPaths(root / "third_party" / "matbench-discovery")
+    base = Path(root) if root else repo_root()
+    return MatbenchDiscoveryPaths(base / "third_party" / "matbench-discovery")

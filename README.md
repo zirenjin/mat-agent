@@ -1,11 +1,12 @@
 # mat-agent
 
-`mat-agent` is a reusable Materials CodeAct agent scaffold for machine-learning
-interatomic potential workflows. It provides structured data, compute, MLIP, and
-research affordances without prescribing benchmark-specific workflows.
+`mat-agent` is a reusable Materials CodeAct scaffold for machine-learning
+interatomic potential workflows. It provides stable model APIs, factual
+registries, lightweight utilities, and operational instructions without
+prescribing benchmark-specific workflows.
 
 This repository is framework-only. It intentionally does not include paper
-benchmarks, hidden tests, scaffold ablation configs, or task-specific scoring.
+benchmarks, private tests, scaffold ablation configs, or task-specific scoring.
 
 ## Stable Model APIs
 
@@ -19,13 +20,16 @@ models/<model>/api/evaluate.sh
 
 Supported model families are MACE, DeePMD/DPA, and FairChem/UMA.
 
-## Scaffold Planes
+## Agent Utilities
 
 ```text
-mat_agent/planes/data       dataset inspection, validation, conversion, splitting
-mat_agent/planes/compute    smoke-run, failure parsing, GPU/checkpoint helpers
-mat_agent/planes/mlip       command builders around stable model APIs
-mat_agent/planes/research   generic experiment logs, comparisons, reports
+mat_agent/data.py              extxyz inspection and validation
+mat_agent/mlip.py              command builders for model APIs
+mat_agent/failures.py          runtime log classification
+mat_agent/logging.py           JSONL experiment logging
+mat_agent/registry.py          registry loading and repo path helpers
+mat_agent/matbench_discovery.py path helpers for vendored Matbench Discovery
+mat_agent/scaffolds/           CodeAct prompts, affordances, and guardrails
 ```
 
 ## Skills
@@ -40,5 +44,5 @@ Operational instructions live under `skills/`:
 
 ## Boundary
 
-Keep downstream benchmark tasks, hidden labels, paper baselines, and specific
+Keep downstream benchmark tasks, private labels, paper baselines, and specific
 experiment scoring outside this repository.

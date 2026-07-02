@@ -1,1 +1,1 @@
-"""Materials CodeAct scaffold package."""
+"""Small utilities for the Materials CodeAct agent framework."""

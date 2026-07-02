@@ -7,7 +7,7 @@ Use this skill to keep agent experiments auditable.
 Append JSONL records for actions and experiments. The framework helper is:
 
 ```python
-from mat_agent.planes.research.experiment import log_experiment
+from mat_agent.logging import log_experiment
 
 log_experiment(
     "runs/example/experiment_log.jsonl",
@@ -23,7 +23,7 @@ log_experiment(
 Classify runtime logs with:
 
 ```bash
-python3 -m mat_agent.cli.main classify-log /path/to/run.log
+python3 -m mat_agent.cli classify-log /path/to/run.log
 ```
 
 Logging captures what happened, why it was attempted, and what artifacts were

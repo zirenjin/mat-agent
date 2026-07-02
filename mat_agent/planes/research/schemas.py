@@ -1,1 +1,0 @@
-"""Research-plane schema namespace."""

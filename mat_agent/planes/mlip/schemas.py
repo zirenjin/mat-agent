@@ -1,1 +1,0 @@
-"""MLIP-plane namespace."""

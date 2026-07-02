@@ -1,1 +1,0 @@
-"""Compute-plane schema namespace."""

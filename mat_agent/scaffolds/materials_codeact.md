@@ -1,18 +1,27 @@
 # Materials CodeAct Scaffold
 
-This scaffold gives a code-acting agent reusable affordances for materials
-modeling without prescribing a benchmark-specific workflow.
+Use this scaffold to act through code while keeping scientific reasoning
+auditable.
 
-## Planes
+## Loop
 
-- Data Plane: inspect, validate, convert, split, and summarize MLIP datasets.
-- Compute Plane: inspect runtime state, run smoke jobs, classify failures, and
-  find checkpoints.
-- MLIP Plane: build canonical train, inference, and evaluation commands for the
-  maintained model APIs.
-- Research Plane: log experiment intent, evidence, metrics, and reports.
+1. Inspect registries and current artifacts.
+2. State the immediate hypothesis or operational goal.
+3. Execute one concrete code/API step.
+4. Observe logs, metrics, files, and failure signals.
+5. Revise based on evidence.
+6. Record the command, artifacts, and conclusion.
+
+## Affordances
+
+- `playground/registry/*.yaml`: factual model, dataset, and tool inventory.
+- `models/<model>/api/*.sh`: stable training, inference, and evaluation APIs.
+- `mat_agent.data`: extxyz inspection and validation.
+- `mat_agent.mlip`: model API command builders.
+- `mat_agent.failures`: runtime log classification.
+- `mat_agent.logging`: experiment JSONL records.
 
 ## Boundary
 
-This scaffold does not include hidden tests, paper benchmarks, task scoring, or
-fixed scientific SOPs. Those belong in downstream experiment repositories.
+Do not encode paper tasks, scoring rules, private labels, or fixed scientific
+SOPs in this scaffold. Put those in downstream experiment repositories.

@@ -18,8 +18,8 @@ run-local config, then record the exact train/validation paths used.
 3. Confirm labels are present before launching training:
 
 ```bash
-python3 -m mat_agent.cli.main validate-extxyz /path/to/train.extxyz
-python3 -m mat_agent.cli.main validate-extxyz /path/to/val.extxyz
+python3 -m mat_agent.cli validate-extxyz /path/to/train.extxyz
+python3 -m mat_agent.cli validate-extxyz /path/to/val.extxyz
 ```
 
 For full datasets that do not provide framework-defined validation splits,

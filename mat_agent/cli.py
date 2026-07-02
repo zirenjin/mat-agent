@@ -4,9 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
-from mat_agent.planes.data.inspect import inspect_extxyz
-from mat_agent.planes.data.validate import validate_extxyz
-from mat_agent.planes.compute.failures import classify_log
+from mat_agent.data import inspect_extxyz, validate_extxyz
+from mat_agent.failures import classify_log
 
 
 def main() -> int:

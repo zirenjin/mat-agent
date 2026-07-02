@@ -7,7 +7,7 @@ Use this skill to evaluate predictions against labeled `ref_*` data.
 1. Validate labels:
 
 ```bash
-python3 -m mat_agent.cli.main validate-extxyz /path/to/test.extxyz
+python3 -m mat_agent.cli validate-extxyz /path/to/test.extxyz
 ```
 
 2. Run evaluation through the model API:
