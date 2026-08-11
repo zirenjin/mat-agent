@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Benchmark Score Summary",
+  "type": "object",
+  "required": ["env_id", "score_vs_budget", "endpoint_score", "oracle_cost", "gpu_cost", "missing_predictions"],
+  "properties": {
+    "env_id": {"type": "string"},
+    "score_vs_budget": {
+      "type": "object",
+      "required": ["budgets", "metrics_by_budget"],
+      "properties": {
+        "budgets": {"type": "array"},
+        "metrics_by_budget": {"type": "array"}
+      }
+    },
+    "endpoint_score": {},
+    "oracle_cost": {"type": "object"},
+    "gpu_cost": {"type": "object"},
+    "hard_gate_violations": {"type": "array"},
+    "downstream_observable_error": {},
+    "missing_predictions": {"type": "object"},
+    "decision_trace_summary": {"type": "object"}
+  }
+}

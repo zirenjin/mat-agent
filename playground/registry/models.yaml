@@ -1,63 +1,13 @@
-# Agent-visible registry of model interfaces provided by this framework.
-# This file is intentionally factual: it lists local APIs and external metadata
-# sources, but does not encode model preferences or selection policy.
+# Deprecated compatibility registry. Use playground/registry/mlips.yaml.
 
-framework_model_apis:
-  mace:
-    api_dir: models/mace/api
-    implementation_dir: models/mace
-    commands:
-      train: models/mace/api/train.sh
-      inference: models/mace/api/inference.sh
-      evaluate: models/mace/api/evaluate.sh
-    artifact_types:
-      - checkpoint_or_model_file
-      - metrics_json
-      - prediction_file
+current_model_layer:
+  runner: mattertune
+  repo_path: mattertune
+  registry: playground/registry/mlips.yaml
+  note: The old mattertune/<mace|deepmd|fairchem>/api wrappers were moved to scaffold/legacy_model_apis/.
 
-  deepmd:
-    api_dir: models/deepmd/api
-    implementation_dir: models/deepmd
-    commands:
-      train: models/deepmd/api/train.sh
-      inference: models/deepmd/api/inference.sh
-      evaluate: models/deepmd/api/evaluate.sh
-    artifact_types:
-      - checkpoint_or_model_file
-      - metrics_json
-      - prediction_file
+legacy_model_apis:
+  path: scaffold/legacy_model_apis/models
+  status: retained_for_reference_only
+  do_not_use_for_new_tasks: true
 
-  fairchem:
-    api_dir: models/fairchem/api
-    implementation_dir: models/fairchem
-    commands:
-      train: models/fairchem/api/train.sh
-      inference: models/fairchem/api/inference.sh
-      evaluate: models/fairchem/api/evaluate.sh
-    artifact_types:
-      - checkpoint_or_model_file
-      - metrics_json
-      - prediction_file
-
-external_model_metadata:
-  matbench_discovery:
-    root: third_party/matbench-discovery/models
-    description: Upstream Matbench Discovery model cards, configs, tests, and helper scripts.
-    includes:
-      - model_yaml_files
-      - model_readmes
-      - model_test_scripts
-      - training_or_join_scripts_when_provided_upstream
-    excludes:
-      - official_prediction_archives
-    note: Use this source for broad model metadata; this framework registry only records local callable APIs.
-
-recording:
-  model_selection_record_path: playground/runs/<run_id>/model_selection.yaml
-  recommended_fields:
-    - task_goal
-    - candidate_models_considered
-    - selected_model
-    - evidence_sources
-    - data_requirements_checked
-    - compute_requirements_checked

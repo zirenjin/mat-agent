@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "properties": {
+    "artifacts": {
+      "type": "object"
+    },
+    "budget": {
+      "type": "object"
+    },
+    "dataset": {
+      "type": "object"
+    },
+    "metrics": {
+      "type": "object"
+    },
+    "model": {
+      "type": "object"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "task_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id",
+    "task_id",
+    "model",
+    "dataset",
+    "artifacts"
+  ],
+  "title": "mat-agent Run Record",
+  "type": "object"
+}

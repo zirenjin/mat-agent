@@ -1,0 +1,23 @@
+env_id: BENCHMARK-SOFT-LIZNINIO-004
+split_seed: 20260721
+strategy: deterministic_reduced_wbm_with_validation_element_coverage
+oracle_pool:
+  n: 60
+  ids_file: benchmark/envs/softening_liznino/splits/oracle_pool_ids.txt
+validation:
+  n: 30
+  ids_file: benchmark/envs/softening_liznino/splits/validation_ids.txt
+hidden_test:
+  n: 30
+  ids_file: benchmark/envs/softening_liznino/splits/hidden_test_ids.txt
+rationale:
+- Prefer paper split if the archive exposes identifiers.
+- If no paper split is present, use deterministic frame-index or trajectory-segment
+  split and record seed.
+- Hidden test must not expose labels through baseline/agent feedback.
+leakage_checks:
+- Check for duplicate structures.
+- Check whether low-data labels are trajectory neighbors of hidden frames.
+- Check whether the Figshare high-energy WBM file contains the Li6Zn2In2(IO3)16 case
+  or only broad softening-scale data.
+status: prepared_reduced_wbm

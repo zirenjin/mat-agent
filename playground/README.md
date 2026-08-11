@@ -1,9 +1,11 @@
 # Playground
 
-The playground is the agent-facing registry and local run area for the framework.
-It should contain reusable registries and generic scripts only.
+`playground/` is the agent-facing sandbox.
 
-Do not commit benchmark tasks, hidden labels, scaffold ablation configs, or
-paper-specific scoring here.
+Allowed here:
 
-Generated runs belong under `playground/runs/` and should stay out of Git.
+- `registry/`: factual registries for datasets, MLIPs, tools, and scoring.
+- `runs/`: generated run directories, derived configs, logs, and reports.
+- `cache/`: generated or downloaded cache material.
+
+Do not put benchmark task definitions, canonical datasets, hidden labels, scoring source, or model source here.

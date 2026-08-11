@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "max_epochs": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "max_gpus": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "max_oracle_labels": {
+      "minimum": 0,
+      "type": "integer"
+    },
+    "max_train_minutes_per_round": {
+      "minimum": 0,
+      "type": "number"
+    },
+    "max_wall_minutes": {
+      "minimum": 0,
+      "type": "number"
+    }
+  },
+  "title": "mat-agent Budget",
+  "type": "object"
+}

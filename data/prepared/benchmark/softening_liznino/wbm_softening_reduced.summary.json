@@ -1,0 +1,31 @@
+{
+  "raw_json": "data/raw/benchmark/softening_liznino/WBM_high_energy_states.json",
+  "output": "data/prepared/benchmark/softening_liznino/wbm_softening_reduced.extxyz",
+  "n_total_raw_frames": 9308,
+  "n_total_raw_materials": 979,
+  "n_reduced_frames": 120,
+  "oracle_n": 60,
+  "validation_n": 30,
+  "hidden_n": 30,
+  "elements": [
+    "Au",
+    "Ba",
+    "Ce",
+    "Cl",
+    "Co",
+    "Fe",
+    "Ge",
+    "In",
+    "K",
+    "La",
+    "Mn",
+    "Ni",
+    "Rb",
+    "Rh",
+    "Sn",
+    "Sr",
+    "Te",
+    "Y",
+    "Zn"
+  ]
+}

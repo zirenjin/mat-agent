@@ -1,0 +1,13 @@
+services:
+  mat-agent:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: mat-agent:full
+    working_dir: /workspace/mat-agent
+    volumes:
+      - ..:/workspace/mat-agent
+    environment:
+      - PYTHONUNBUFFERED=1
+    command: ["bash"]
+

@@ -1,0 +1,25 @@
+datasets:
+  wbm_1k:
+    path: data/wbm_1k
+    status: local_sample_present
+    roles: [test_sample]
+    protected_splits: [test]
+  matpes:
+    path: data/matpes
+    status: local_cache_present
+    roles: [mlip_training_source]
+    protected_splits: []
+  matpes_ft_50k:
+    path: data/matpes_ft_50k
+    status: local_finetune_subset_present
+    roles: [train, val, test]
+    protected_splits: [test]
+  rmd17_aspirin_ft:
+    path: data/rmd17_aspirin_ft
+    status: local_finetune_subset_present
+    roles: [train, test]
+    protected_splits: [test]
+policy:
+  canonical_raw_protected: true
+  derived_data_root: playground/runs/<run_id>/data
+

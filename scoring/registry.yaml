@@ -1,0 +1,17 @@
+scoring_families:
+  basic_mlip:
+    adapter: scoring/core/metrics.py
+    metrics: [energy_mae_per_atom, force_mae, stress_mae, missing_predictions]
+    output_schema: scoring/schemas/score_summary.schema.json
+  matbench_discovery:
+    adapter_root: scoring/matbench-discovery
+    status: vendored_source_present
+    planned_wrapper_root: scoring/adapters/matbench_discovery
+  srme:
+    adapter_root: scoring/adapters/srme
+    status: planned
+extension_contract:
+  entrypoint_name: score.py
+  required_args: [--predictions, --output]
+  recommended_args: [--labels, --split, --task-config]
+

@@ -1,21 +1,15 @@
 tools:
-  verdict:
-    command: python3 tools/verdict.py
-    image: mat-agent/base:latest
-    visible_to_agent: true
-    purpose: score canonical pred_* fields against ref_* labels
-  anomaly_sniffer:
-    command: python3 tools/anomaly_sniffer.py
-    image: mat-agent/base:latest
-    visible_to_agent: true
-    purpose: classify runtime logs and simple physical failure diagnostics
-  run_logged_docker:
-    command: bash tools/run_logged_docker.sh
-    image: host
-    visible_to_agent: true
-    purpose: launch docker commands with stable log and metadata artifacts
-  runner_controller:
-    command: python3 tools/runner_controller.py
-    image: host
-    visible_to_agent: true
-    purpose: stream training telemetry and classify recoverable runtime failures
+  logging:
+    time_logger: scaffold/tools/time_logger.py
+    feedback_logger: scaffold/tools/feedback_logger.py
+    run_logged_docker: scaffold/tools/run_logged_docker.sh
+  policy:
+    budget_guard: scaffold/tools/budget_guard.py
+    dataset_guard: scaffold/tools/dataset_guard.py
+  debugging:
+    anomaly_sniffer: scaffold/tools/anomaly_sniffer.py
+    failure_classifier: scaffold/python/mat_agent/failures.py
+  scoring:
+    registry: scoring/registry.yaml
+    core_metrics: scoring/core/metrics.py
+

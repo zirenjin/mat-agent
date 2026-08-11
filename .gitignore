@@ -19,12 +19,12 @@ data/raw/
 *.csv.gz
 *.extxyz.zip
 uma_ckpts/
-models/dpa/
-models/dpa4/
-models/**/*.pt
-models/**/*.pth
-models/**/*.model
-models/**/.cache/
+mattertune/dpa/
+mattertune/dpa4/
+mattertune/**/*.pt
+mattertune/**/*.pth
+mattertune/**/*.model
+mattertune/**/.cache/
 
 # Generated datasets that can be rebuilt
 datasets/prepared/*/dp_*/
@@ -53,23 +53,23 @@ datasets/**/*.npz
 
 
 # Vendored Matbench Discovery source data and tiny upstream fixtures
-!third_party/matbench-discovery/data/**/*.csv.gz
-!third_party/matbench-discovery/tests/files/*.csv.gz
+!scoring/matbench-discovery/data/**/*.csv.gz
+!scoring/matbench-discovery/tests/files/*.csv.gz
 
 # Keep lightweight dataset metadata if useful
 data/**/manifest.json
 datasets/**/manifest.json
-datasets/prep_scripts/
-datasets/prep_scripts/**
+data/prep_scripts/
+data/prep_scripts/**
 
 # One-off data preparation and experiment analysis scripts
 /data_prep.py
 /prepare_*.py
 /mp_vs_off_force_delta.py
 /verdict.py
-/tools/eval_ft.py
-/tools/pearson_ft.py
-/tools/run_mace_ft.sh
+/scaffold/tools/eval_ft.py
+/scaffold/tools/pearson_ft.py
+/scaffold/tools/run_mace_ft.sh
 
 # Runtime logs and playground run outputs
 logs/
@@ -79,3 +79,17 @@ playground/scripts/__pycache__/
 # Downloaded MATPES parquet/cache files
 data/**/*.parquet
 data/**/_cache/
+
+# Benchmark generated artifacts
+benchmark_tasks/tasks/*/training_inputs/
+benchmark_tasks/tasks/*/results/**
+!benchmark_tasks/tasks/*/results/
+!benchmark_tasks/tasks/*/results/score_curve.csv
+!benchmark_tasks/tasks/*/results/score_summary.json
+!benchmark_tasks/tasks/*/results/score_vs_budget.png
+!benchmark_tasks/tasks/*/results/*_hidden.json
+
+# Local docs drafts; only the public MatterTune Bash API spec is versioned
+/docs/*
+!/docs/mattertune_bash_api.md
+scoring/matbench-discovery/data/**/*.jsonl.gz

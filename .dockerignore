@@ -13,12 +13,12 @@ __pycache__/
 # Data files (mounted at runtime, not baked into images)
 data/
 datasets/*
-!datasets/prep_scripts/
-!datasets/prep_scripts/*.py
+!data/prep_scripts/
+!data/prep_scripts/*.py
 
 # Checkpoints (mounted at runtime)
-models/dpa/
-models/dpa4/
+mattertune/dpa/
+mattertune/dpa4/
 uma_ckpts/
 
 # Run outputs
@@ -49,3 +49,26 @@ Dockerfile*
 # Conda
 *.conda
 miniconda3/
+# mat-agent generated runtime state
+playground/runs/
+playground/cache/
+playground/scripts/__pycache__/
+logs/
+
+# Legacy wrappers are kept for migration reference, not baked into unified image
+scaffold/legacy_model_apis/
+
+# Nested repositories and local runtime state
+mattertune/.git/
+mattertune/log.txt
+.venvs/
+# Large benchmark/source caches not needed by the Docker image
+benchmark/
+.cache/
+# Benchmark generated artifacts are runtime state
+benchmark_tasks/tasks/*/results/
+benchmark_tasks/tasks/*/training_inputs/
+benchmark_tasks/tasks/*/**/results/
+benchmark_tasks/tasks/*/**/checkpoints/
+benchmark_tasks/tasks/*/**/*.extxyz
+benchmark_tasks/tasks/*/**/*.xyz
