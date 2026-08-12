@@ -1,0 +1,24 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install lint tools
+        run: python -m pip install ruff
+      - name: Ruff
+        run: ruff check tools scoring/machine_learning scoring/physics tests
+      - name: Compile Python
+        run: python -m compileall -q tools scoring/machine_learning scoring/physics tests
+      - name: Unit tests
+        run: python -m unittest discover -s tests

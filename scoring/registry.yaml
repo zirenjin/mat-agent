@@ -1,17 +1,42 @@
-scoring_families:
-  basic_mlip:
-    adapter: scoring/core/metrics.py
-    metrics: [energy_mae_per_atom, force_mae, stress_mae, missing_predictions]
-    output_schema: scoring/schemas/score_summary.schema.json
-  matbench_discovery:
-    adapter_root: scoring/matbench-discovery
-    status: vendored_source_present
-    planned_wrapper_root: scoring/adapters/matbench_discovery
-  srme:
-    adapter_root: scoring/adapters/srme
-    status: planned
-extension_contract:
-  entrypoint_name: score.py
-  required_args: [--predictions, --output]
-  recommended_args: [--labels, --split, --task-config]
+api_version: 1
+registry_kind: scoring_registry
 
+metric_families:
+  machine_learning:
+    root: scoring/machine_learning
+    metrics:
+      mae:
+        entrypoint: scoring/machine_learning/mae.py
+      rmse:
+        entrypoint: scoring/machine_learning/rmse.py
+      r2:
+        entrypoint: scoring/machine_learning/r2.py
+
+  physics:
+    root: scoring/physics
+    basis: Elena et al. npj Computational Materials 2025 MOF phonon benchmark quantities
+    metrics:
+      unit_cell_length_percent_error:
+        entrypoint: scoring/physics/unit_cell_length_percent_error.py
+      space_group_match:
+        entrypoint: scoring/physics/space_group_match.py
+      imaginary_mode_count:
+        entrypoint: scoring/physics/imaginary_mode_count.py
+      phonon_frequency_rmse:
+        entrypoint: scoring/physics/phonon_frequency_rmse.py
+      phonon_dos_mae:
+        entrypoint: scoring/physics/phonon_dos_mae.py
+      bulk_modulus_relative_error:
+        entrypoint: scoring/physics/bulk_modulus_relative_error.py
+      thermal_expansion_relative_error:
+        entrypoint: scoring/physics/thermal_expansion_relative_error.py
+
+adapters:
+  root: scoring/adapters
+  matbench_discovery:
+    upstream: scoring/adapters/matbench_discovery/upstream
+    status: vendored_source_present
+
+bash_contract:
+  direct_metric_call: python scoring/<family>/<metric>.py [typed args]
+  output: stable JSON to stdout, optional --output JSON path

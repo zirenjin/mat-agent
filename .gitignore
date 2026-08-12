@@ -53,8 +53,8 @@ datasets/**/*.npz
 
 
 # Vendored Matbench Discovery source data and tiny upstream fixtures
-!scoring/matbench-discovery/data/**/*.csv.gz
-!scoring/matbench-discovery/tests/files/*.csv.gz
+!scoring/adapters/matbench_discovery/upstream/data/**/*.csv.gz
+!scoring/adapters/matbench_discovery/upstream/tests/files/*.csv.gz
 
 # Keep lightweight dataset metadata if useful
 data/**/manifest.json
@@ -80,16 +80,7 @@ playground/scripts/__pycache__/
 data/**/*.parquet
 data/**/_cache/
 
-# Benchmark generated artifacts
-benchmark_tasks/tasks/*/training_inputs/
-benchmark_tasks/tasks/*/results/**
-!benchmark_tasks/tasks/*/results/
-!benchmark_tasks/tasks/*/results/score_curve.csv
-!benchmark_tasks/tasks/*/results/score_summary.json
-!benchmark_tasks/tasks/*/results/score_vs_budget.png
-!benchmark_tasks/tasks/*/results/*_hidden.json
-
 # Local docs drafts; only the public MatterTune Bash API spec is versioned
 /docs/*
 !/docs/mattertune_bash_api.md
-scoring/matbench-discovery/data/**/*.jsonl.gz
+scoring/adapters/matbench_discovery/upstream/data/**/*.jsonl.gz

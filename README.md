@@ -13,9 +13,8 @@ Only these top-level directories are part of the active design:
 playground/        agent sandbox: registries, runs, cache
 tools/             reusable infrastructure tools
 skills/            agent operating instructions
-benchmark_tasks/   benchmark task specs, warm starts, baselines, task packages
 data/              dataset manifests, local data, prep scripts, checkpoints
-scoring/           score registries, metric code, external scorer adapters
+scoring/           machine-learning metrics, physics metrics, external adapters
 mattertune/        MatterTune checkout used as the MLIP/fine-tuning backend
 docker/            unified Docker image and Bash lifecycle entrypoints
 docs/              public design docs; only mattertune_bash_api.md is versioned
@@ -27,8 +26,7 @@ docs/              public design docs; only mattertune_bash_api.md is versioned
 - Put agent-visible registries under `playground/registry/`.
 - Put reusable infrastructure only once under `tools/`.
 - Put agent operating instructions under `skills/`.
-- Put benchmark definitions under `benchmark_tasks/tasks/<task_id>/`.
-- Put scoring wrappers under `scoring/adapters/<score_family>/` and shared metrics under `scoring/core/`.
+- Put metrics as one Bash-callable Python file each under `scoring/machine_learning/` or `scoring/physics/`.
 - Treat `mattertune/` as external model source. Agents may configure MatterTune, not patch MLIP architecture code.
 
 ## Docker

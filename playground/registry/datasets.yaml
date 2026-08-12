@@ -31,14 +31,13 @@ split_policy:
 canonical_roots:
   local_data: data
   scoring_sources: scoring
-  task_manifests: benchmark_tasks/tasks
 
 datasets:
   wbm_matbench_discovery:
     name: WBM Benchmark Test Set
     source: matbench_discovery
     role: protected_discovery_benchmark
-    source_metadata: scoring/matbench-discovery/data/datasets.yml#WBM
+    source_metadata: scoring/adapters/matbench_discovery/upstream/data/datasets.yml#WBM
     n_structures: 256963
     n_materials: 215488
     precision:
@@ -47,10 +46,10 @@ datasets:
       functional: PBE+U
       pseudopotentials: PBE
     files:
-      summary: scoring/matbench-discovery/data/wbm/2023-12-13-wbm-summary.csv.gz
+      summary: scoring/adapters/matbench_discovery/upstream/data/wbm/2023-12-13-wbm-summary.csv.gz
       initial_structures_zip: 2024-08-04-wbm-initial-atoms.extxyz.zip
-      mp_elemental_references: scoring/matbench-discovery/data/mp/2023-02-07-mp-elemental-reference-entries.json.gz
-      datasets_index: scoring/matbench-discovery/data/datasets.yml
+      mp_elemental_references: scoring/adapters/matbench_discovery/upstream/data/mp/2023-02-07-mp-elemental-reference-entries.json.gz
+      datasets_index: scoring/adapters/matbench_discovery/upstream/data/datasets.yml
     formats:
       summary: csv_gzip
       structures: extxyz_zip
@@ -71,7 +70,7 @@ datasets:
     name: MatPES v1.0 PBE
     source: materialyze/matpes
     role: canonical_training_source
-    source_metadata: scoring/matbench-discovery/data/datasets.yml#MatPES_PBE
+    source_metadata: scoring/adapters/matbench_discovery/upstream/data/datasets.yml#MatPES_PBE
     n_structures: 434712
     precision:
       method: DFT
@@ -100,13 +99,13 @@ datasets:
       stress: ref_stress
     notes:
       - Framework-level validation/test splits are not registered yet.
-      - Task-specific splits must be recorded under benchmark_tasks or playground/runs.
+      - Task-specific splits must be recorded in run-local manifests under playground/runs.
 
   matpes_r2scan_full:
     name: MatPES v1.0 r2SCAN
     source: materialyze/matpes
     role: canonical_training_source
-    source_metadata: scoring/matbench-discovery/data/datasets.yml#MatPES_r2SCAN
+    source_metadata: scoring/adapters/matbench_discovery/upstream/data/datasets.yml#MatPES_r2SCAN
     n_structures: 387897
     precision:
       method: DFT
@@ -135,4 +134,4 @@ datasets:
       stress: ref_stress
     notes:
       - Framework-level validation/test splits are not registered yet.
-      - Task-specific splits must be recorded under benchmark_tasks or playground/runs.
+      - Task-specific splits must be recorded in run-local manifests under playground/runs.

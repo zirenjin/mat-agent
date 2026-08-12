@@ -65,10 +65,3 @@ mattertune/log.txt
 # Large benchmark/source caches not needed by the Docker image
 benchmark/
 .cache/
-# Benchmark generated artifacts are runtime state
-benchmark_tasks/tasks/*/results/
-benchmark_tasks/tasks/*/training_inputs/
-benchmark_tasks/tasks/*/**/results/
-benchmark_tasks/tasks/*/**/checkpoints/
-benchmark_tasks/tasks/*/**/*.extxyz
-benchmark_tasks/tasks/*/**/*.xyz
