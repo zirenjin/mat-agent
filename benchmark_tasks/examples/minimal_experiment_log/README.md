@@ -1,4 +1,4 @@
 # Minimal Experiment Log
 
-Use `mat_agent.logging.log_experiment` to append generic
-experiment records to JSONL files.
+Use `tools/feedback_logger.py` and run-local JSONL files to record
+experiment observations. Keep logs under `playground/runs/<run_id>/`.

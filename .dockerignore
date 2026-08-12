@@ -56,7 +56,7 @@ playground/scripts/__pycache__/
 logs/
 
 # Legacy wrappers are kept for migration reference, not baked into unified image
-scaffold/legacy_model_apis/
+legacy_model_apis/
 
 # Nested repositories and local runtime state
 mattertune/.git/

@@ -82,7 +82,7 @@ launch_one() {
     --name "${cname}" \
     --gpus all \
     -e PYTHONUNBUFFERED=1 \
-    -e PYTHONPATH=/work/third_party/matbench-discovery:/work \
+    -e PYTHONPATH=/work/scoring/matbench-discovery:/work \
     -v "${ROOT}:/work" \
     -w /work \
     "${IMAGE}" \

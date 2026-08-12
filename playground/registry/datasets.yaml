@@ -1,14 +1,44 @@
-# Agent-visible registry of full datasets available to this workspace.
-# This file is factual: it records locations, formats, precision/DFT level, and
-# whether train/validation/test splits are present. It does not list
-# downselected or task-specific derived splits.
+# Agent-visible dataset registry.
+#
+# This registry records canonical dataset identities and split visibility. It is
+# not a place for derived splits, ad hoc downsampling, or generated artifacts.
+# Agents may read registered train/validation data during training. Protected
+# test/OOD splits are only visible to evaluation tasks through evaluate.sh.
+
+api_version: 1
+registry_kind: dataset_registry
+
+split_policy:
+  train:
+    train_visible: true
+    evaluate_visible: true
+    mutable_by_agent: false
+  validation:
+    train_visible: true
+    evaluate_visible: true
+    mutable_by_agent: false
+  test:
+    train_visible: false
+    evaluate_visible: true
+    mutable_by_agent: false
+    protected: true
+  ood:
+    train_visible: false
+    evaluate_visible: true
+    mutable_by_agent: false
+    protected: true
+
+canonical_roots:
+  local_data: data
+  scoring_sources: scoring
+  task_manifests: benchmark_tasks/tasks
 
 datasets:
   wbm_matbench_discovery:
     name: WBM Benchmark Test Set
     source: matbench_discovery
-    source_metadata: third_party/matbench-discovery/data/datasets.yml#WBM
-    role: full_discovery_test_set
+    role: protected_discovery_benchmark
+    source_metadata: scoring/matbench-discovery/data/datasets.yml#WBM
     n_structures: 256963
     n_materials: 215488
     precision:
@@ -17,33 +47,31 @@ datasets:
       functional: PBE+U
       pseudopotentials: PBE
     files:
-      summary: third_party/matbench-discovery/data/wbm/2023-12-13-wbm-summary.csv.gz
+      summary: scoring/matbench-discovery/data/wbm/2023-12-13-wbm-summary.csv.gz
       initial_structures_zip: 2024-08-04-wbm-initial-atoms.extxyz.zip
-      root_summary_copy: 2023-12-13-wbm-summary.csv.gz
-      mp_elemental_references: third_party/matbench-discovery/data/mp/2023-02-07-mp-elemental-reference-entries.json.gz
-      datasets_index: third_party/matbench-discovery/data/datasets.yml
+      mp_elemental_references: scoring/matbench-discovery/data/mp/2023-02-07-mp-elemental-reference-entries.json.gz
+      datasets_index: scoring/matbench-discovery/data/datasets.yml
     formats:
       summary: csv_gzip
       structures: extxyz_zip
       references: json_gzip
       metadata: yaml
-    splits:
-      train: false
-      validation: false
-      test: true
-      split_note: WBM is registered here as the full Matbench Discovery benchmark test set.
-    labels:
-      - formation_energy
-      - energy_above_hull_or_stability_fields_in_summary
+    registered_splits:
+      test:
+        present: true
+        protected: true
+        train_visible: false
+        mutable_by_agent: false
+    labels: [formation_energy, energy_above_hull_or_stability_fields_in_summary]
     notes:
-      - Keep downselected WBM subsets outside this full-dataset registry.
-      - Official model prediction archives are intentionally excluded from this repository.
+      - Register WBM here only as the protected benchmark source.
+      - Downselected WBM subsets belong in benchmark task manifests or run-local records.
 
   matpes_pbe_full:
     name: MatPES v1.0 PBE
     source: materialyze/matpes
-    source_metadata: third_party/matbench-discovery/data/datasets.yml#MatPES_PBE
-    role: full_mlip_training_source
+    role: canonical_training_source
+    source_metadata: scoring/matbench-discovery/data/datasets.yml#MatPES_PBE
     n_structures: 434712
     precision:
       method: DFT
@@ -57,23 +85,28 @@ datasets:
     formats:
       local_cache: parquet
       upstream_archive: json_gzip
-    splits:
-      train: true
-      validation: false
-      test: false
-      split_note: The local full-data cache currently records the upstream train shard only; framework-defined validation/test splits are not registered here.
+    registered_splits:
+      train:
+        present: true
+        train_visible: true
+        mutable_by_agent: false
+      validation:
+        present: false
+      test:
+        present: false
     labels:
       energy: ref_energy
       forces: ref_forces
       stress: ref_stress
     notes:
-      - Keep downselected MATPES training subsets outside this full-dataset registry.
+      - Framework-level validation/test splits are not registered yet.
+      - Task-specific splits must be recorded under benchmark_tasks or playground/runs.
 
   matpes_r2scan_full:
     name: MatPES v1.0 r2SCAN
     source: materialyze/matpes
-    source_metadata: third_party/matbench-discovery/data/datasets.yml#MatPES_r2SCAN
-    role: full_mlip_training_source
+    role: canonical_training_source
+    source_metadata: scoring/matbench-discovery/data/datasets.yml#MatPES_r2SCAN
     n_structures: 387897
     precision:
       method: DFT
@@ -87,14 +120,19 @@ datasets:
     formats:
       local_cache: parquet
       upstream_archive: json_gzip
-    splits:
-      train: true
-      validation: false
-      test: false
-      split_note: The local full-data cache currently records the upstream train shard only; framework-defined validation/test splits are not registered here.
+    registered_splits:
+      train:
+        present: true
+        train_visible: true
+        mutable_by_agent: false
+      validation:
+        present: false
+      test:
+        present: false
     labels:
       energy: ref_energy
       forces: ref_forces
       stress: ref_stress
     notes:
-      - Keep downselected MATPES training subsets outside this full-dataset registry.
+      - Framework-level validation/test splits are not registered yet.
+      - Task-specific splits must be recorded under benchmark_tasks or playground/runs.

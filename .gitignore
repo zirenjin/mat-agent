@@ -67,9 +67,9 @@ data/prep_scripts/**
 /prepare_*.py
 /mp_vs_off_force_delta.py
 /verdict.py
-/scaffold/tools/eval_ft.py
-/scaffold/tools/pearson_ft.py
-/scaffold/tools/run_mace_ft.sh
+/tools/eval_ft.py
+/tools/pearson_ft.py
+/tools/run_mace_ft.sh
 
 # Runtime logs and playground run outputs
 logs/

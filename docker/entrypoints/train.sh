@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT="${MAT_AGENT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
-export PYTHONPATH="$ROOT/mattertune/src:$ROOT/scaffold/python:$ROOT:${PYTHONPATH:-}"
+export PYTHONPATH="$ROOT/mattertune/src:$ROOT:${PYTHONPATH:-}"
 
 usage() {
   cat <<'USAGE'
@@ -23,4 +23,4 @@ if [ $# -eq 0 ] || [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
   exit 0
 fi
 
-exec python "$ROOT/scaffold/tools/mattertune_train.py" "$@"
+exec python "$ROOT/tools/mattertune_train.py" "$@"

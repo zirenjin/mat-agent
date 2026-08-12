@@ -18,7 +18,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 COPY mattertune/ /workspace/mat-agent/mattertune/
-COPY scaffold/ /workspace/mat-agent/scaffold/
+COPY tools/ /workspace/mat-agent/tools/
 COPY scoring/ /workspace/mat-agent/scoring/
 COPY docker/entrypoints/ /usr/local/bin/
 
@@ -34,5 +34,5 @@ RUN if [ "$MAT_AGENT_INSTALL_MODE" = "smoke" ]; then \
       echo "Unknown MAT_AGENT_INSTALL_MODE=$MAT_AGENT_INSTALL_MODE" >&2; exit 2; \
     fi
 
-ENV PYTHONPATH=/workspace/mat-agent:/workspace/mat-agent/scaffold/python:/workspace/mat-agent/mattertune/src
+ENV PYTHONPATH=/workspace/mat-agent:/workspace/mat-agent/mattertune/src
 CMD ["/bin/bash"]

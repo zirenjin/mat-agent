@@ -29,7 +29,7 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--model-name", required=True)
     p.add_argument("--model", required=True, help="Local checkpoint path or MACE foundation URL/name")
-    p.add_argument("--atoms-zip", default="/work/third_party/matbench-discovery/data/wbm/2024-08-04-wbm-initial-atoms.extxyz.zip")
+    p.add_argument("--atoms-zip", default="/work/scoring/matbench-discovery/data/wbm/2024-08-04-wbm-initial-atoms.extxyz.zip")
     p.add_argument("--out-dir", required=True)
     p.add_argument("--device", default="cuda")
     p.add_argument("--dtype", default="float64")

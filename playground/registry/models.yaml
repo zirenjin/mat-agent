@@ -1,13 +1,192 @@
-# Deprecated compatibility registry. Use playground/registry/mlips.yaml.
+# Agent-visible model and MLIP registry.
+#
+# This is the single registry for model-family capabilities exposed to agents.
+# It describes the public Bash-first surface, not the full MatterTune internals.
 
-current_model_layer:
-  runner: mattertune
+api_version: 1
+registry_kind: model_registry
+source_of_truth: docs/mattertune_bash_api.md
+
+runner:
+  name: mattertune
   repo_path: mattertune
-  registry: playground/registry/mlips.yaml
-  note: The old mattertune/<mace|deepmd|fairchem>/api wrappers were moved to scaffold/legacy_model_apis/.
+  import_name: mattertune
+  train_adapter: tools/mattertune_train.py
+  lifecycle_entrypoints:
+    train: docker/entrypoints/train.sh
+    inference: docker/entrypoints/inference.sh
+    evaluate: docker/entrypoints/evaluate.sh
+  default_run_root: playground/runs
+  agent_facing_config_files: false
+  dotted_path_overrides_allowed: false
 
-legacy_model_apis:
-  path: scaffold/legacy_model_apis/models
-  status: retained_for_reference_only
-  do_not_use_for_new_tasks: true
+common_training_contract:
+  required_args: [checkpoint, train_data, run_dir, properties]
+  optional_args:
+    - val_data
+    - batch_size
+    - num_workers
+    - seed
+    - learning_rate
+    - max_steps
+    - resume_from
+    - dry_run
+    - json
+    - manifest
+  forbidden_args: [test_data, config, override, set, resume]
+  sandbox:
+    train_can_read_splits: [train, validation]
+    evaluate_can_read_splits: [train, validation, test, ood]
+    run_dir_must_be_under: playground/runs
+    dataset_mutation_allowed: false
+    architecture_editable: false
 
+models:
+  deepmd:
+    cli_name: deepmd
+    mattertune_configs:
+      single: DeepMDBackboneConfig
+      multihead: DeepMDMultiHeadBackboneConfig
+    checkpoint_semantics: path_or_trusted_protocol_identifier
+    properties: [energy, forces, stresses]
+    protocols:
+      single:
+        required_args: [mode]
+        optional_args: [branch, trainable_scope]
+        capabilities_required: [single_branch]
+      multihead:
+        required_args: [mode, domain]
+        one_or_more_head_declarations: [resume_head, copy_head, random_head]
+        random_head_requires: [head_seed, private_fitting_head]
+        optional_args: [sampling_weight, loss_weight, trainable_scope]
+        capabilities_required: [multi_head, multi_domain_training]
+    exposed_args:
+      - mode
+      - branch
+      - resume_head
+      - copy_head
+      - random_head
+      - head_seed
+      - private_fitting_head
+      - domain
+      - sampling_weight
+      - loss_weight
+      - trainable_scope
+    forbidden_args: [head_init, lora, trust_checkpoint, continual_mode, atomref_mode]
+    trainable_scopes: [full, head_only]
+    status_source: mattertune.capabilities_and_parity
+
+  sevennet:
+    cli_name: sevennet
+    mattertune_configs:
+      base: SevenNetBackboneConfig
+    checkpoint_semantics: path_or_trusted_protocol_identifier
+    properties: [energy, forces, stresses]
+    protocols:
+      none:
+        required_args: [continual_mode]
+        capabilities_required: []
+      replay:
+        required_args: [continual_mode, replay_data, replay_batch_size, replay_ratio]
+        capabilities_required: [replay]
+      ewc:
+        required_args: [continual_mode, fisher, reference, lambda_ewc]
+        capabilities_required: [ewc]
+      replay-ewc:
+        required_args:
+          - continual_mode
+          - replay_data
+          - replay_batch_size
+          - replay_ratio
+          - fisher
+          - reference
+          - lambda_ewc
+        capabilities_required: [replay, ewc, replay_plus_ewc]
+    exposed_args: [continual_mode, replay_data, replay_batch_size, replay_ratio, fisher, reference, lambda_ewc]
+    forbidden_args: [lora, head_mode, atomref_mode, domain]
+    replay_semantics: separate_optimizer_step
+    fisher_semantics: precomputed_artifact
+    status_source: mattertune.capabilities_and_parity
+
+  chgnet:
+    cli_name: chgnet
+    mattertune_configs:
+      base: CHGNetBackboneConfig
+    checkpoint_semantics: path_or_trusted_protocol_identifier
+    properties: [energy, forces, stresses, magnetic_moments]
+    protocols:
+      native_objective:
+        required_args: [objective, atomref_mode, energy_basis]
+        capabilities_required: [atomref_adaptation]
+    exposed_args: [objective, atomref_mode, energy_basis]
+    objective_property_contract:
+      ef: [energy, forces]
+      efs: [energy, forces, stresses]
+      efm: [energy, forces, magnetic_moments]
+      efsm: [energy, forces, stresses, magnetic_moments]
+    atomref_modes: [preserve, network_only, atomref_only, joint]
+    energy_basis: [per_atom, total]
+    magnetic_moment_semantics: unsigned_magnitude
+    forbidden_args: [magmom_convention, signed_magnetic_moments, lora, replay_data, head_mode]
+    status_source: mattertune.capabilities_and_parity
+
+  mace:
+    cli_name: mace
+    mattertune_configs:
+      base: MACEBackboneConfig
+    checkpoint_semantics: trusted_local_file_only
+    trust_checkpoint_required: true
+    properties: [energy, forces, stresses]
+    protocols:
+      single_head:
+        required_args: [head_mode, trust_checkpoint]
+        capabilities_required: [single_head]
+      multi_head:
+        required_args: [head_mode, head, trust_checkpoint]
+        capabilities_required: [multi_head, named_head_selection]
+      lora:
+        requires_protocol: [single_head, multi_head]
+        required_args: [lora, lora_rank, lora_alpha]
+        capabilities_required: [lora]
+    exposed_args: [trust_checkpoint, head_mode, head, lora, lora_rank, lora_alpha]
+    forbidden_args:
+      - replay_data
+      - pseudo_label_replay
+      - freeze_layers
+      - named_checkpoint_download
+      - continual_mode
+      - atomref_mode
+    status_source: mattertune.capabilities_and_parity
+
+lifecycle_status:
+  train:
+    dry_run: implemented
+    training: not_agent_facing_yet
+  inference:
+    command_exists: true
+    implementation_status: not_implemented
+    exit_code: 64
+  evaluate:
+    command_exists: true
+    implementation_status: not_implemented
+    exit_code: 64
+
+internal_helpers:
+  score_sh:
+    path: docker/entrypoints/score.sh
+    public_lifecycle_api: false
+  predict_sh:
+    path: docker/entrypoints/predict.sh
+    public_lifecycle_api: false
+    status: legacy_compatibility_only
+
+protected_source_paths:
+  forbidden_agent_edits:
+    - mattertune/src/mattertune/backbones/**
+    - mattertune/src/mattertune/configs/backbones/**
+    - mattertune/src/mattertune/finetune/**
+  allowed_agent_configuration_surface:
+    - docker/entrypoints/train.sh
+    - tools/mattertune_train.py
+    - playground/registry/models.yaml
+    - docs/mattertune_bash_api.md

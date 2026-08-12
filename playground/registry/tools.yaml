@@ -1,15 +1,70 @@
-tools:
-  logging:
-    time_logger: scaffold/tools/time_logger.py
-    feedback_logger: scaffold/tools/feedback_logger.py
-    run_logged_docker: scaffold/tools/run_logged_docker.sh
-  policy:
-    budget_guard: scaffold/tools/budget_guard.py
-    dataset_guard: scaffold/tools/dataset_guard.py
-  debugging:
-    anomaly_sniffer: scaffold/tools/anomaly_sniffer.py
-    failure_classifier: scaffold/python/mat_agent/failures.py
-  scoring:
-    registry: scoring/registry.yaml
-    core_metrics: scoring/core/metrics.py
+# Agent-visible tool registry.
+#
+# Registry files live in playground because agents can inspect them from inside
+# the sandbox. The actual reusable tools live once, outside the sandbox, under
+# tools. Do not duplicate the same responsibility in multiple entries.
 
+api_version: 1
+registry_kind: tool_registry
+
+tools:
+  mattertune_train_adapter:
+    path: tools/mattertune_train.py
+    responsibility: Convert Bash-first train.sh arguments into validated MatterTune dry-run execution plans.
+    lifecycle: train
+    public_entrypoint: docker/entrypoints/train.sh
+
+  dataset_guard:
+    path: tools/dataset_guard.py
+    responsibility: Check dataset path visibility and split-mutation boundaries before agent use.
+    lifecycle: train_or_evaluate_preflight
+
+  budget_guard:
+    path: tools/budget_guard.py
+    responsibility: Enforce run budget limits before expensive commands.
+    lifecycle: run_preflight
+
+  time_logger:
+    path: tools/time_logger.py
+    responsibility: Record timing events for agent actions and run phases.
+    lifecycle: observability
+
+  feedback_logger:
+    path: tools/feedback_logger.py
+    responsibility: Append human or evaluator feedback records to run-local logs.
+    lifecycle: observability
+
+  run_logged_docker:
+    path: tools/run_logged_docker.sh
+    responsibility: Execute Docker commands while collecting command metadata and logs.
+    lifecycle: execution_wrapper
+
+  runner_controller:
+    path: tools/runner_controller.py
+    responsibility: Coordinate bounded command execution and summarize process outcomes.
+    lifecycle: execution_wrapper
+
+  anomaly_sniffer:
+    path: tools/anomaly_sniffer.py
+    responsibility: Scan logs and artifacts for common failure signatures.
+    lifecycle: debugging
+
+  ase_conventions:
+    path: tools/ase_conventions.py
+    responsibility: Inspect ASE/extxyz property naming and unit conventions.
+    lifecycle: data_debugging
+
+  eval_report:
+    path: tools/eval_report.py
+    responsibility: Format metric outputs into compact evaluation reports.
+    lifecycle: reporting
+
+  verdict:
+    path: tools/verdict.py
+    responsibility: Convert metrics and thresholds into benchmark verdict summaries.
+    lifecycle: reporting
+
+external_registries:
+  models: playground/registry/models.yaml
+  datasets: playground/registry/datasets.yaml
+  scoring: scoring/registry.yaml

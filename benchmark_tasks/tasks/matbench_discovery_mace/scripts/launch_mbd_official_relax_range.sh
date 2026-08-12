@@ -48,7 +48,7 @@ run_chunk() {
     --gpu \
     --mount "${ROOT}:/work" \
     --workdir /work \
-    --env "PYTHONPATH=/work/third_party/matbench-discovery:/work" \
+    --env "PYTHONPATH=/work/scoring/matbench-discovery:/work" \
     -- python3 playground/scripts/run_mbd_official_mace_relax.py \
       --model-name "${MODEL_NAME}" \
       --model "${MODEL_PATH}" \

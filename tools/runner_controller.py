@@ -2,7 +2,7 @@
 """State-machine runner for resilient model training.
 
 This controller launches a model train API, streams logs into structured
-telemetry, diagnoses failures through scaffold/tools/anomaly_sniffer.py, and applies a
+telemetry, diagnoses failures through tools/anomaly_sniffer.py, and applies a
 small set of deterministic self-healing actions that an upstream agent can
 inspect and control through registries.
 """
@@ -28,16 +28,13 @@ from ase.calculators.calculator import Calculator, all_changes
 from ase.io import read, write
 from ase.optimize import BFGS
 
-ROOT = Path(__file__).resolve().parents[1]
-TOOLS = ROOT / "scaffold" / "tools"
+ROOT = Path(__file__).resolve().parents[2]
+TOOLS = ROOT / "tools"
 if str(TOOLS) not in sys.path:
     sys.path.insert(0, str(TOOLS))
 
-MODEL_API = {
-    "mace": ROOT / "models/mace/api/train.sh",
-    "deepmd": ROOT / "models/deepmd/api/train.sh",
-    "fairchem": ROOT / "models/fairchem/api/train.sh",
-}
+MODEL_CHOICES = ("chgnet", "deepmd", "mace", "sevennet")
+TRAIN_ENTRYPOINT = ROOT / "docker" / "entrypoints" / "train.sh"
 
 EPOCH_RE = re.compile(r"Epoch\s+(?P<epoch>\d+).*(?:loss=|loss[: ]+)(?P<loss>[-+0-9.eE]+)")
 LOSS_RE = re.compile(r"(?:loss=|loss[: ]+)(?P<loss>[-+0-9.eE]+)")
@@ -83,7 +80,7 @@ class PairRepulsionCalculator(Calculator):
 
 def parse_args() -> tuple[argparse.Namespace, list[str]]:
     p = argparse.ArgumentParser(description=__doc__, allow_abbrev=False)
-    p.add_argument("--model", choices=sorted(MODEL_API), default="mace", help="Model API to run")
+    p.add_argument("--model", choices=MODEL_CHOICES, default="mace", help="MatterTune model subcommand to run")
     p.add_argument("--api-script", default=None, help="Override train.sh path")
     p.add_argument("--telemetry-file", default=None, help="JSONL telemetry path")
     p.add_argument("--controller-log", default=None, help="Raw merged subprocess log path")
@@ -103,7 +100,7 @@ def parse_args() -> tuple[argparse.Namespace, list[str]]:
 
 def main() -> int:
     args, train_args = parse_args()
-    api_script = Path(args.api_script) if args.api_script else MODEL_API[args.model]
+    api_script = Path(args.api_script) if args.api_script else TRAIN_ENTRYPOINT
     if not api_script.is_file():
         raise SystemExit(f"train API not found: {api_script}")
     telemetry = Path(args.telemetry_file or _default_output_dir(train_args) / "runner_telemetry.jsonl")
@@ -120,7 +117,7 @@ def main() -> int:
     while True:
         attempt += 1
         _emit(telemetry, {"event": "attempt_start", "attempt": attempt, "args": current_args})
-        rc = _run_once(api_script, current_args, raw_log, telemetry, state, attempt)
+        rc = _run_once(api_script, [args.model, *current_args], raw_log, telemetry, state, attempt)
         if state.interrupted:
             _degrade_state(current_args, telemetry, reason="SIGNAL_INTERRUPTED")
             return 130
@@ -279,7 +276,7 @@ def _install_signal_handlers(state: ControllerState, telemetry: Path) -> None:
 
 
 def _default_output_dir(args: list[str]) -> Path:
-    value = _get_flag(args, "--output-dir")
+    value = _get_flag(args, "--run-dir")
     return Path(value) if value else ROOT / "playground/runs/runner_controller"
 
 

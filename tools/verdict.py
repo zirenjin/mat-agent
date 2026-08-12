@@ -12,7 +12,7 @@ Thresholds (default):
 Override with --threshold-good / --threshold-pass. For OC20, use 60 / 120.
 
 Usage:
-    python scaffold/tools/verdict.py \
+    python tools/verdict.py \
         --predictions /path/to/preds.xyz \
         --truth /path/to/truth.extxyz \
         --output /path/to/verdict.json \
@@ -41,7 +41,7 @@ try:
         get_ref_forces,
     )
 except ImportError:
-    # Fallback for when scaffold/tools/ is not on path — inline the logic
+    # Fallback for when tools/ is not on path — inline the logic
     import warnings
     warnings.warn("ase_conventions not importable; using inline fallbacks")
     def _get_info_key(atoms, *keys):

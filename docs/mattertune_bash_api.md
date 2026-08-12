@@ -7,7 +7,7 @@ This document is the normative agent-facing API specification for using MatterTu
 | Principle | Requirement |
 | --- | --- |
 | Bash-first | Autonomous agents call shell commands with typed arguments. They are not required to author MatterTune config files. |
-| Typed adapter | `scaffold/tools/mattertune_train.py` maps Bash arguments into `MatterTunerConfig` and backbone configs. |
+| Typed adapter | `tools/mattertune_train.py` maps Bash arguments into `MatterTunerConfig` and backbone configs. |
 | Internal source of truth | MatterTune `MatterTunerConfig`, backbone configs, `capabilities()`, and `parity_status()` define the internal semantics. |
 | No escape hatch | Public v1 commands MUST NOT expose generic dotted-path mutation such as `--override a.b.c=value` or `--set a.b.c=value`. |
 | Model-local surface | Only parameters supported by a model protocol may appear in that model subcommand's `--help`. |
