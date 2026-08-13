@@ -17,19 +17,19 @@ metric_families:
     basis: Elena et al. npj Computational Materials 2025 MOF phonon benchmark quantities
     metrics:
       unit_cell_length_percent_error:
-        entrypoint: scoring/physics/unit_cell_length_percent_error.py
+        entrypoint: scoring/physics/mace_mof_0/unit_cell_length_percent_error.py
       space_group_match:
-        entrypoint: scoring/physics/space_group_match.py
+        entrypoint: scoring/physics/mace_mof_0/space_group_match.py
       imaginary_mode_count:
-        entrypoint: scoring/physics/imaginary_mode_count.py
+        entrypoint: scoring/physics/mace_mof_0/imaginary_mode_count.py
       phonon_frequency_rmse:
-        entrypoint: scoring/physics/phonon_frequency_rmse.py
+        entrypoint: scoring/physics/mace_mof_0/phonon_frequency_rmse.py
       phonon_dos_mae:
-        entrypoint: scoring/physics/phonon_dos_mae.py
+        entrypoint: scoring/physics/mace_mof_0/phonon_dos_mae.py
       bulk_modulus_relative_error:
-        entrypoint: scoring/physics/bulk_modulus_relative_error.py
+        entrypoint: scoring/physics/mace_mof_0/bulk_modulus_relative_error.py
       thermal_expansion_relative_error:
-        entrypoint: scoring/physics/thermal_expansion_relative_error.py
+        entrypoint: scoring/physics/mace_mof_0/thermal_expansion_relative_error.py
 
 adapters:
   root: scoring/adapters

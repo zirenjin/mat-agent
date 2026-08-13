@@ -19,6 +19,14 @@ datasets:
     status: local_finetune_subset_present
     roles: [train, test]
     protected_splits: [test]
+  mace_mof_0:
+    path: data/mace_mof_0
+    status: public_assets_downloaded
+    source: https://github.com/ddmms/data/tree/main/mace-mof-0
+    doi: 10.1038/s41524-025-01611-8
+    roles: [model, training_data, physics_benchmark_data]
+    protected_splits: []
+    manifest: data/mace_mof_0/manifest.json
 policy:
   canonical_raw_protected: true
   derived_data_root: playground/runs/<run_id>/data

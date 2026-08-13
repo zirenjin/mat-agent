@@ -84,3 +84,8 @@ data/**/_cache/
 /docs/*
 !/docs/mattertune_bash_api.md
 scoring/adapters/matbench_discovery/upstream/data/**/*.jsonl.gz
+
+# Public MACE-MOF-0 artifacts; keep only provenance manifest in git
+data/mace_mof_0/**
+!data/mace_mof_0/
+!data/mace_mof_0/manifest.json

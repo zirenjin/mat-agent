@@ -1,0 +1,107 @@
+{
+  "assets": [
+    {
+      "path": "data/mace_mof_0/models/mofs_v1.model",
+      "sha256": "2219a935e28c21cf3bd767533a3bc95666c55ce00df0dd4ee313c0d78d8af7bf",
+      "size_bytes": 30768381
+    },
+    {
+      "path": "data/mace_mof_0/models/mofs_v2.model",
+      "sha256": "04113c54cb5f8e1f30babbbda12cd97df401a65c1424f24c4cf1bcce247f12db",
+      "size_bytes": 30769085
+    },
+    {
+      "path": "data/mace_mof_0/raw/127 Curated Dataset.zip",
+      "sha256": "f0e72a1f83df891f6e7b65bf2a7e9afcf28b29eaf9cb2850d0534abb66f0e8b9",
+      "size_bytes": 609189
+    },
+    {
+      "path": "data/mace_mof_0/raw/BulkModulus_data.zip",
+      "sha256": "4dc9467d0cbb8ef4d7fe836b64bf8e9bacd229d3260cd799c94ab8bee5c7a448",
+      "size_bytes": 2173
+    },
+    {
+      "path": "data/mace_mof_0/raw/LICENSE",
+      "sha256": "81322ae76865ef22793dba2c9d172b48fd6e889190c612f25a6d03989d3bde2c",
+      "size_bytes": 547
+    },
+    {
+      "path": "data/mace_mof_0/raw/NegativeThermalExpansion.csv",
+      "sha256": "04589ed8105cc6a51e4fd6fc33aef8350641bc9115e24e1928b639b498aa049b",
+      "size_bytes": 834
+    },
+    {
+      "path": "data/mace_mof_0/raw/README.md",
+      "sha256": "03b0b0c6e9ce46d1cc827daf8003822bc8fd0f019983a444d733d11a87e049d5",
+      "size_bytes": 1298
+    },
+    {
+      "path": "data/mace_mof_0/raw/curated_test.zip",
+      "sha256": "01e340c7e310dad3a9946902a1643a9e1aaf1f9721f670ae4291cd61e76ddf07",
+      "size_bytes": 161370
+    },
+    {
+      "path": "data/mace_mof_0/raw/data_training.tar.xz",
+      "sha256": "57664c593fc91a0411cc002a6919878f9cfbcfb1ed59adf6d03e486790ee14f5",
+      "size_bytes": 11045592
+    },
+    {
+      "path": "data/mace_mof_0/raw/optimized structures.zip",
+      "sha256": "ce0e99e313136744691100744f4c3583021b9c3541f5ae4b755ff8bba06df0f7",
+      "size_bytes": 104344
+    },
+    {
+      "path": "data/mace_mof_0/raw/phonons/DFT_DOS.zip",
+      "sha256": "bced1f4f9c400aaa8e38d282b32b2cccfc872869fd040a8a07cce0b2d18fbf9e",
+      "size_bytes": 212331
+    },
+    {
+      "path": "data/mace_mof_0/raw/phonons/MIL-53.zip",
+      "sha256": "005e469f713b90f472672898b6bfc15329ee9cff12d7ce02e9bef50395eede2d",
+      "size_bytes": 8482104
+    },
+    {
+      "path": "data/mace_mof_0/raw/phonons/MOF-5.zip",
+      "sha256": "1a671dbd36eff6fec237a70b183d1b1be427b50e03287546faca5225149b28f5",
+      "size_bytes": 1977186
+    },
+    {
+      "path": "data/mace_mof_0/raw/phonons/MOF-74.zip",
+      "sha256": "3b4af34f81cb894f3d746b881681fff54dd39ae70da48437f31b010e08aa1b59",
+      "size_bytes": 905833
+    },
+    {
+      "path": "data/mace_mof_0/raw/phonons/UiO-66.zip",
+      "sha256": "96c6c50a6e50f30e0ce637117ef098e5434d984f2b9a7a6a34b7971926bd25fa",
+      "size_bytes": 1985260
+    },
+    {
+      "path": "data/mace_mof_0/raw/phonons/readme.md",
+      "sha256": "905861a69f6f5d6caf7f0782a52e3a9ea44ffe593820ea02b7e9b7ee2bebb24f",
+      "size_bytes": 31
+    }
+  ],
+  "data_assets": [
+    "data/mace_mof_0/raw/127 Curated Dataset.zip",
+    "data/mace_mof_0/raw/curated_test.zip",
+    "data/mace_mof_0/raw/optimized structures.zip",
+    "data/mace_mof_0/raw/BulkModulus_data.zip",
+    "data/mace_mof_0/raw/NegativeThermalExpansion.csv",
+    "data/mace_mof_0/raw/data_training.tar.xz",
+    "data/mace_mof_0/raw/phonons"
+  ],
+  "dataset_id": "mace_mof_0",
+  "doi": "10.1038/s41524-025-01611-8",
+  "license_file": "data/mace_mof_0/raw/LICENSE",
+  "model_assets": [
+    "data/mace_mof_0/models/mofs_v1.model",
+    "data/mace_mof_0/models/mofs_v2.model"
+  ],
+  "notes": [
+    "Large model/data artifacts are gitignored; this manifest is the tracked provenance record.",
+    "The source repository omat-ft/mof-omat-0-v2.model is a 2-byte placeholder and is not registered as a usable model artifact."
+  ],
+  "paper": "Towards universal machine learning force fields for metal-organic frameworks",
+  "source_repository": "https://github.com/ddmms/data/tree/main/mace-mof-0",
+  "tracked_in_git": false
+}

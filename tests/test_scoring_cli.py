@@ -30,12 +30,12 @@ class ScoringCliTest(unittest.TestCase):
         self.assertEqual(out['value'], 1.0)
 
     def test_physics_unit_cell_percent_error_cli(self) -> None:
-        out = self.run_json('scoring/physics/unit_cell_length_percent_error.py', '--pred', '10.5', '--ref', '10.0')
+        out = self.run_json('scoring/physics/mace_mof_0/unit_cell_length_percent_error.py', '--pred', '10.5', '--ref', '10.0')
         self.assertEqual(out['metric'], 'unit_cell_length_percent_error')
         self.assertEqual(out['value'], 5.0)
 
     def test_physics_imaginary_mode_count_cli(self) -> None:
-        out = self.run_json('scoring/physics/imaginary_mode_count.py', '--frequencies=-0.01,-0.00001,1.0', '--threshold', '-0.0001')
+        out = self.run_json('scoring/physics/mace_mof_0/imaginary_mode_count.py', '--frequencies=-0.01,-0.00001,1.0', '--threshold', '-0.0001')
         self.assertEqual(out['metric'], 'imaginary_mode_count')
         self.assertEqual(out['value'], 1.0)
 
