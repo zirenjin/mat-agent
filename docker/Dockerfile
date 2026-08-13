@@ -2,7 +2,9 @@ FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-runtime
 
 ARG PIP_INDEX_URL=https://mirrors.ivolces.com/pypi/simple/
 ARG PIP_TRUSTED_HOST=mirrors.ivolces.com
-ARG MAT_AGENT_INSTALL_MODE=smoke
+# full is the default because train.sh --dry-run constructs real MatterTune configs.
+# smoke is only for fast image-structure checks and does not install MatterTune deps.
+ARG MAT_AGENT_INSTALL_MODE=full
 
 ENV DEBIAN_FRONTEND=noninteractive \
     PYTHONUNBUFFERED=1 \
