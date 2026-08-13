@@ -22,7 +22,7 @@ This document is the normative agent-facing API specification for using MatterTu
 | `inference.sh MODEL ...` | Run a checkpoint on unlabeled structures and write model outputs. | unlabeled structures |
 | `evaluate.sh MODEL ...` | Run a checkpoint on labeled benchmark data and compute metrics / benchmark scores. | labeled evaluation split, including protected test/OOD when authorized |
 
-The model subcommands are `deepmd`, `sevennet`, `chgnet`, and `mace` where supported by the command.
+The v1 Bash adapter subcommands are `deepmd`, `sevennet`, `chgnet`, and `mace` where supported by the command. This is the agent-facing CLI coverage, not the full MatterTune backbone registry. Dry-run execution plans MUST report `mattertune_backbone_name`, `capability_source`, `capability_errors`, `parity_status`, `parity_source`, and `parity_errors` so agents can distinguish Bash adapter support from MatterTune capability/parity metadata.
 
 ## 3. Common Artifact / Path Semantics
 

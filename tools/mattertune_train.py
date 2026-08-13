@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import hashlib
 import json
 import sys
@@ -11,31 +12,23 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-CAPABILITY_MATRIX: dict[str, dict[str, Any]] = {
-    "deepmd": {
-        "single_branch": True,
-        "multi_head": True,
-        "multi_domain_training": True,
-    },
-    "sevennet": {
-        "replay": True,
-        "ewc": True,
-        "replay_plus_ewc": True,
-    },
-    "chgnet": {
-        "objectives": ["ef", "efs", "efm", "efsm"],
-        "magnetic_moments": True,
-        "signed_magnetic_moments": False,
-        "atomref_modes": True,
-    },
-    "mace": {
-        "named_head_selection": True,
-        "single_head": True,
-        "multi_head": True,
-        "lora": True,
-        "merged_deployment_export": True,
-    },
+MATTERTUNE_SOURCE_ROOT = Path(__file__).resolve().parents[1] / "mattertune" / "src" / "mattertune"
+
+CAPABILITY_SOURCES: dict[str, tuple[str, ...]] = {
+    "deepmd": ("backbones/deepmd/model.py",),
+    "deepmd_multihead": (
+        "backbones/deepmd/multihead.py",
+        "backbones/deepmd/multihead_module.py",
+    ),
+    "sevennet": (
+        "backbones/sevennet/model.py",
+        "backbones/sevennet/continual.py",
+    ),
+    "chgnet": ("backbones/chgnet/model.py",),
+    "mace": ("backbones/mace_foundation/model.py",),
 }
+
+SUPPORTED_BASH_MODELS = {"deepmd", "sevennet", "chgnet", "mace"}
 
 SUPPORTED_PROPERTIES = {"energy", "forces", "stress", "stresses", "magmoms", "magnetic_moments"}
 
@@ -45,6 +38,180 @@ def dump_config_object(obj: Any) -> Any:
         return obj.model_dump(mode="json")
     return repr(obj)
 
+
+
+def literal_dict_from_ast(node: ast.Dict) -> tuple[dict[str, Any], list[str]]:
+    values: dict[str, Any] = {}
+    errors: list[str] = []
+    for key_node, value_node in zip(node.keys, node.values, strict=True):
+        if key_node is None:
+            errors.append("dict unpacking is not extractable")
+            continue
+        try:
+            key = ast.literal_eval(key_node)
+        except (ValueError, SyntaxError):
+            errors.append("non-literal capability key is not extractable")
+            continue
+        if not isinstance(key, str):
+            errors.append(f"non-string capability key is not extractable: {key!r}")
+            continue
+        try:
+            values[key] = ast.literal_eval(value_node)
+        except (ValueError, SyntaxError):
+            errors.append(f"dynamic value for {key}")
+    return values, errors
+
+
+def literal_dict_from_return(func: ast.FunctionDef) -> tuple[dict[str, Any], list[str]] | None:
+    for node in ast.walk(func):
+        if isinstance(node, ast.Return) and isinstance(node.value, ast.Dict):
+            return literal_dict_from_ast(node.value)
+    return None
+
+
+def find_function(module: ast.Module, name: str) -> ast.FunctionDef | None:
+    for node in ast.walk(module):
+        if isinstance(node, ast.FunctionDef) and node.name == name:
+            return node
+    return None
+
+
+def source_literal_capabilities(source_path: Path) -> tuple[dict[str, Any], list[str]]:
+    text = source_path.read_text(encoding="utf-8")
+    module = ast.parse(text, filename=str(source_path))
+    capabilities: dict[str, Any] = {}
+    errors: list[str] = []
+
+    for function_name in ("multihead_capabilities", "continual_capabilities"):
+        func = find_function(module, function_name)
+        if func is None:
+            continue
+        literal = literal_dict_from_return(func)
+        if literal is None:
+            errors.append(f"{source_path}:{function_name} has no literal return dict")
+        else:
+            extracted, literal_errors = literal
+            capabilities.update(extracted)
+            errors.extend(f"{source_path}:{function_name} {error}" for error in literal_errors)
+
+    for class_node in (node for node in ast.walk(module) if isinstance(node, ast.ClassDef)):
+        func = next((item for item in class_node.body if isinstance(item, ast.FunctionDef) and item.name == "capabilities"), None)
+        if func is None:
+            continue
+        local_caps: dict[str, Any] = {}
+        literal = literal_dict_from_return(func)
+        if literal is not None:
+            extracted, literal_errors = literal
+            local_caps.update(extracted)
+            errors.extend(f"{source_path}:{class_node.name}.capabilities {error}" for error in literal_errors)
+        for stmt in func.body:
+            if (
+                isinstance(stmt, ast.Assign)
+                and len(stmt.targets) == 1
+                and isinstance(stmt.targets[0], ast.Subscript)
+                and isinstance(stmt.targets[0].value, ast.Name)
+                and stmt.targets[0].value.id == "capabilities"
+                and isinstance(stmt.targets[0].slice, ast.Constant)
+                and isinstance(stmt.targets[0].slice.value, str)
+            ):
+                try:
+                    local_caps[stmt.targets[0].slice.value] = ast.literal_eval(stmt.value)
+                except (ValueError, SyntaxError):
+                    errors.append(f"{source_path}:{class_node.name}.capabilities dynamic value for {stmt.targets[0].slice.value}")
+        if local_caps:
+            capabilities.update(local_caps)
+
+    return capabilities, errors
+
+
+def mattertune_source_capabilities(backbone_name: str) -> tuple[dict[str, Any], str, list[str]]:
+    sources = CAPABILITY_SOURCES.get(backbone_name)
+    if not sources:
+        return {}, "unsupported_bash_adapter_backbone", [f"no capability source mapping for {backbone_name}"]
+    capabilities: dict[str, Any] = {}
+    errors: list[str] = []
+    read_sources: list[str] = []
+    for source in sources:
+        path = MATTERTUNE_SOURCE_ROOT / source
+        if not path.is_file():
+            errors.append(f"missing MatterTune source file: {source}")
+            continue
+        extracted, source_errors = source_literal_capabilities(path)
+        capabilities.update(extracted)
+        errors.extend(source_errors)
+        read_sources.append(source)
+    if capabilities:
+        return capabilities, "mattertune_source:" + ",".join(read_sources), errors
+    return {}, "mattertune_missing_capabilities", errors or [f"no capabilities() metadata found for {backbone_name}"]
+
+
+def source_literal_parity(source_path: Path) -> tuple[dict[str, Any], list[str]]:
+    text = source_path.read_text(encoding="utf-8")
+    module = ast.parse(text, filename=str(source_path))
+    parity: dict[str, Any] = {}
+    errors: list[str] = []
+
+    for function_name in ("multihead_parity_status", "continual_parity_status"):
+        func = find_function(module, function_name)
+        if func is None:
+            continue
+        literal = literal_dict_from_return(func)
+        if literal is None:
+            errors.append(f"{source_path}:{function_name} has no literal return dict")
+        else:
+            extracted, literal_errors = literal
+            parity.update(extracted)
+            errors.extend(f"{source_path}:{function_name} {error}" for error in literal_errors)
+
+    for class_node in (node for node in ast.walk(module) if isinstance(node, ast.ClassDef)):
+        func = next((item for item in class_node.body if isinstance(item, ast.FunctionDef) and item.name == "parity_status"), None)
+        if func is None:
+            continue
+        literal = literal_dict_from_return(func)
+        if literal is None:
+            errors.append(f"{source_path}:{class_node.name}.parity_status has no literal return dict")
+        else:
+            extracted, literal_errors = literal
+            parity.update(extracted)
+            errors.extend(f"{source_path}:{class_node.name}.parity_status {error}" for error in literal_errors)
+
+    return parity, errors
+
+
+def mattertune_source_parity(backbone_name: str) -> tuple[dict[str, Any], str, list[str]]:
+    sources = CAPABILITY_SOURCES.get(backbone_name)
+    if not sources:
+        return {}, "unsupported_bash_adapter_backbone", [f"no parity source mapping for {backbone_name}"]
+    parity: dict[str, Any] = {}
+    errors: list[str] = []
+    read_sources: list[str] = []
+    for source in sources:
+        path = MATTERTUNE_SOURCE_ROOT / source
+        if not path.is_file():
+            errors.append(f"missing MatterTune source file: {source}")
+            continue
+        extracted, source_errors = source_literal_parity(path)
+        parity.update(extracted)
+        errors.extend(source_errors)
+        read_sources.append(source)
+    if parity:
+        return parity, "mattertune_source:" + ",".join(read_sources), errors
+    return {}, "mattertune_missing_parity", errors or [f"no parity_status() metadata found for {backbone_name}"]
+
+
+def preflight_capabilities(backbone_name: str, required: list[str]) -> tuple[dict[str, Any], str, list[str]]:
+    capabilities, source, errors = mattertune_source_capabilities(backbone_name)
+    if not capabilities:
+        if required:
+            errors.append(f"required capabilities were not checked because {backbone_name} has no metadata")
+        return capabilities, source, errors
+    missing = [name for name in required if capabilities.get(name) in (None, False)]
+    if missing:
+        raise SystemExit(
+            f"required capabilities not supported by {backbone_name}: {missing}; "
+            f"capability_source={source}"
+        )
+    return capabilities, source, errors
 
 @dataclass
 class Plan:
@@ -59,6 +226,12 @@ class Plan:
     resume_mode: str
     trusted_checkpoint_requirement: str
     capabilities: dict[str, Any]
+    mattertune_backbone_name: str
+    capability_source: str
+    capability_errors: list[str]
+    parity_status: dict[str, Any]
+    parity_source: str
+    parity_errors: list[str]
     mattertune_config_valid: bool
     mattertune_config_class: str
     output_format: str
@@ -78,6 +251,12 @@ class Plan:
             "resume_mode": self.resume_mode,
             "trusted_checkpoint_requirement": self.trusted_checkpoint_requirement,
             "capabilities": self.capabilities,
+            "mattertune_backbone_name": self.mattertune_backbone_name,
+            "capability_source": self.capability_source,
+            "capability_errors": self.capability_errors,
+            "parity_status": self.parity_status,
+            "parity_source": self.parity_source,
+            "parity_errors": self.parity_errors,
             "mattertune_config_valid": self.mattertune_config_valid,
             "mattertune_config_class": self.mattertune_config_class,
             "config_preview": self.config_preview,
@@ -420,6 +599,11 @@ def emit(plan: Plan, args: argparse.Namespace) -> None:
         "run_dir": plan.run_dir,
         "resume_mode": plan.resume_mode,
         "trusted_checkpoint_requirement": plan.trusted_checkpoint_requirement,
+        "mattertune_backbone_name": plan.mattertune_backbone_name,
+        "capability_source": plan.capability_source,
+        "capability_errors": ";".join(plan.capability_errors) if plan.capability_errors else "none",
+        "parity_source": plan.parity_source,
+        "parity_errors": ";".join(plan.parity_errors) if plan.parity_errors else "none",
         "mattertune_config_valid": str(plan.mattertune_config_valid).lower(),
         "mattertune_config_class": plan.mattertune_config_class,
         "manifest": str(manifest),
@@ -537,10 +721,9 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:
         raise SystemExit(f"MatterTune config validation failed: {type(exc).__name__}: {exc}") from exc
 
-    capabilities = dict(CAPABILITY_MATRIX[args.model_type])
-    missing = [name for name in required if capabilities.get(name) in (None, False)]
-    if missing:
-        raise SystemExit(f"required capabilities not supported by {args.model_type}: {missing}")
+    backbone_name = str(getattr(model_config, "name", args.model_type))
+    capabilities, capability_source, capability_errors = preflight_capabilities(backbone_name, required)
+    parity_status, parity_source, parity_errors = mattertune_source_parity(backbone_name)
 
     plan = Plan(
         model_type=args.model_type,
@@ -554,6 +737,12 @@ def main(argv: list[str] | None = None) -> int:
         resume_mode=resume_mode,
         trusted_checkpoint_requirement=trust_requirement,
         capabilities=capabilities,
+        mattertune_backbone_name=backbone_name,
+        capability_source=capability_source,
+        capability_errors=capability_errors,
+        parity_status=parity_status,
+        parity_source=parity_source,
+        parity_errors=parity_errors,
         mattertune_config_valid=True,
         mattertune_config_class=type(mt_config).__name__,
         output_format="json" if args.json else "key=value",
