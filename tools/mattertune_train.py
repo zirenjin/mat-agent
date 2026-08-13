@@ -7,12 +7,18 @@ import argparse
 import ast
 import hashlib
 import json
+import os
 import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-MATTERTUNE_SOURCE_ROOT = Path(__file__).resolve().parents[1] / "mattertune" / "src" / "mattertune"
+MATTERTUNE_SOURCE_ROOT = Path(
+    os.environ.get(
+        "MATTERTUNE_SOURCE_ROOT",
+        Path(__file__).resolve().parents[1] / "mattertune" / "src" / "mattertune",
+    )
+)
 
 CAPABILITY_SOURCES: dict[str, tuple[str, ...]] = {
     "deepmd": ("backbones/deepmd/model.py",),
@@ -37,7 +43,6 @@ def dump_config_object(obj: Any) -> Any:
     if hasattr(obj, "model_dump"):
         return obj.model_dump(mode="json")
     return repr(obj)
-
 
 
 def literal_dict_from_ast(node: ast.Dict) -> tuple[dict[str, Any], list[str]]:
@@ -95,7 +100,10 @@ def source_literal_capabilities(source_path: Path) -> tuple[dict[str, Any], list
             errors.extend(f"{source_path}:{function_name} {error}" for error in literal_errors)
 
     for class_node in (node for node in ast.walk(module) if isinstance(node, ast.ClassDef)):
-        func = next((item for item in class_node.body if isinstance(item, ast.FunctionDef) and item.name == "capabilities"), None)
+        func = next(
+            (item for item in class_node.body if isinstance(item, ast.FunctionDef) and item.name == "capabilities"),
+            None,
+        )
         if func is None:
             continue
         local_caps: dict[str, Any] = {}
@@ -117,7 +125,9 @@ def source_literal_capabilities(source_path: Path) -> tuple[dict[str, Any], list
                 try:
                     local_caps[stmt.targets[0].slice.value] = ast.literal_eval(stmt.value)
                 except (ValueError, SyntaxError):
-                    errors.append(f"{source_path}:{class_node.name}.capabilities dynamic value for {stmt.targets[0].slice.value}")
+                    errors.append(
+                        f"{source_path}:{class_node.name}.capabilities dynamic value for {stmt.targets[0].slice.value}"
+                    )
         if local_caps:
             capabilities.update(local_caps)
 
@@ -164,7 +174,10 @@ def source_literal_parity(source_path: Path) -> tuple[dict[str, Any], list[str]]
             errors.extend(f"{source_path}:{function_name} {error}" for error in literal_errors)
 
     for class_node in (node for node in ast.walk(module) if isinstance(node, ast.ClassDef)):
-        func = next((item for item in class_node.body if isinstance(item, ast.FunctionDef) and item.name == "parity_status"), None)
+        func = next(
+            (item for item in class_node.body if isinstance(item, ast.FunctionDef) and item.name == "parity_status"),
+            None,
+        )
         if func is None:
             continue
         literal = literal_dict_from_return(func)
@@ -208,10 +221,10 @@ def preflight_capabilities(backbone_name: str, required: list[str]) -> tuple[dic
     missing = [name for name in required if capabilities.get(name) in (None, False)]
     if missing:
         raise SystemExit(
-            f"required capabilities not supported by {backbone_name}: {missing}; "
-            f"capability_source={source}"
+            f"required capabilities not supported by {backbone_name}: {missing}; capability_source={source}"
         )
     return capabilities, source, errors
+
 
 @dataclass
 class Plan:
@@ -338,7 +351,9 @@ def require_existing_file(path_value: str | None, label: str) -> str | None:
 def require_sandbox_run_dir(run_dir_value: str) -> str:
     path = Path(run_dir_value)
     parts = path.parts
-    allowed = path.is_relative_to("playground/runs") if not path.is_absolute() else "playground" in parts and "runs" in parts
+    allowed = (
+        path.is_relative_to("playground/runs") if not path.is_absolute() else "playground" in parts and "runs" in parts
+    )
     if not allowed:
         raise SystemExit("--run-dir must be inside playground/runs")
     path.mkdir(parents=True, exist_ok=True)
@@ -418,7 +433,7 @@ def build_deepmd(args: argparse.Namespace, properties: list[str]) -> tuple[Any, 
             properties=property_configs(properties),
             optimizer=AdamWConfig(lr=args.learning_rate),
         )
-        return model, "single_branch", "full", ["single_branch"], {"mode": "single", "branch": args.branch}
+        return model, "single_branch", "full", ["full_fine_tuning"], {"mode": "single", "branch": args.branch}
 
     from mattertune.backbones.deepmd.multihead import DeepMDHeadConfig
     from mattertune.backbones.deepmd.multihead_module import DeepMDDomainConfig, DeepMDMultiHeadBackboneConfig
@@ -484,14 +499,18 @@ def build_sevennet(args: argparse.Namespace, properties: list[str]) -> tuple[Any
         required.append("replay")
         missing = [name for name in ("replay_data", "replay_batch_size", "replay_ratio") if getattr(args, name) is None]
         if missing:
-            raise SystemExit(f"--continual-mode {mode} requires: {', '.join('--' + m.replace('_', '-') for m in missing)}")
+            raise SystemExit(
+                f"--continual-mode {mode} requires: {', '.join('--' + m.replace('_', '-') for m in missing)}"
+            )
     if mode in {"ewc", "replay-ewc"}:
         required.append("ewc")
         if mode == "replay-ewc":
             required.append("replay_plus_ewc")
         missing = [name for name in ("fisher", "reference", "lambda_ewc") if getattr(args, name) is None]
         if missing:
-            raise SystemExit(f"--continual-mode {mode} requires: {', '.join('--' + m.replace('_', '-') for m in missing)}")
+            raise SystemExit(
+                f"--continual-mode {mode} requires: {', '.join('--' + m.replace('_', '-') for m in missing)}"
+            )
     if mode == "none":
         forbidden = ["replay_data", "replay_batch_size", "replay_ratio", "fisher", "reference", "lambda_ewc"]
         used = [name for name in forbidden if getattr(args, name) is not None]
@@ -532,10 +551,12 @@ def build_chgnet(args: argparse.Namespace, properties: list[str]) -> tuple[Any, 
         "energy_basis": args.energy_basis,
         "magmom_convention": "unsigned_magnitude" if "magnetic_moments" in objective_props else None,
     }
-    return model, f"{args.objective}:{args.atomref_mode}", args.atomref_mode, ["objectives", "atomref_modes"], protocol
+    return model, f"{args.objective}:{args.atomref_mode}", args.atomref_mode, ["full_fine_tuning"], protocol
 
 
-def build_mace(args: argparse.Namespace, properties: list[str]) -> tuple[Any, str, str, list[str], list[Any], dict[str, Any]]:
+def build_mace(
+    args: argparse.Namespace, properties: list[str]
+) -> tuple[Any, str, str, list[str], list[Any], dict[str, Any]]:
     from mattertune.backbones.mace_foundation.model import MACEBackboneConfig
     from mattertune.finetune.optimizer import AdamWConfig
     from mattertune.recipes.lora import LoraConfig, LoRARecipeConfig
@@ -560,7 +581,9 @@ def build_mace(args: argparse.Namespace, properties: list[str]) -> tuple[Any, st
             raise SystemExit("--lora requires: " + ", ".join("--" + name.replace("_", "-") for name in missing))
         required.append("lora")
         mode += "+lora"
-        recipes.append(LoRARecipeConfig(lora=LoraConfig(r=args.lora_rank, lora_alpha=args.lora_alpha, target_modules="all-linear")))
+        recipes.append(
+            LoRARecipeConfig(lora=LoraConfig(r=args.lora_rank, lora_alpha=args.lora_alpha, target_modules="all-linear"))
+        )
     protocol = {
         "head_mode": args.head_mode,
         "head": args.head,
@@ -691,7 +714,9 @@ def main(argv: list[str] | None = None) -> int:
     train_data = require_existing_file(args.train_data, "--train-data")
     val_data = require_existing_file(args.val_data, "--val-data")
     run_dir = require_sandbox_run_dir(args.run_dir)
-    resume_mode = f"resume_from:{require_existing_file(args.resume_from, '--resume-from')}" if args.resume_from else "fresh"
+    resume_mode = (
+        f"resume_from:{require_existing_file(args.resume_from, '--resume-from')}" if args.resume_from else "fresh"
+    )
 
     if args.model_type == "mace":
         ckpt_id = file_identity(args.checkpoint, "--checkpoint")

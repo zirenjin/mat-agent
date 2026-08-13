@@ -20,6 +20,13 @@ def load_adapter():
 class MatterTuneCapabilityExtractionTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        required = [
+            ROOT / "mattertune/src/mattertune/backbones/deepmd/multihead.py",
+            ROOT / "mattertune/src/mattertune/backbones/sevennet/continual.py",
+            ROOT / "mattertune/src/mattertune/backbones/mace_foundation/model.py",
+        ]
+        if not all(path.is_file() for path in required):
+            raise unittest.SkipTest("MatterTune submodule source is not available")
         cls.adapter = load_adapter()
 
     def test_deepmd_multihead_capabilities_are_source_derived(self) -> None:
