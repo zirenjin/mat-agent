@@ -7,8 +7,8 @@ import argparse
 import csv
 import json
 import math
-from pathlib import Path
 from collections.abc import Callable
+from pathlib import Path
 
 
 def finite_float(value: str) -> float:

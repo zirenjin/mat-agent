@@ -10,7 +10,6 @@ import argparse
 
 from _common import emit, finite_float
 
-
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description="Count phonon frequencies below an imaginary-mode threshold", allow_abbrev=False)
     p.add_argument("--frequencies", required=True, help="Comma-separated frequencies, e.g. THz")

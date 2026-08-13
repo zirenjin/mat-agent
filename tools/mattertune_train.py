@@ -40,6 +40,12 @@ CAPABILITY_MATRIX: dict[str, dict[str, Any]] = {
 SUPPORTED_PROPERTIES = {"energy", "forces", "stress", "stresses", "magmoms", "magnetic_moments"}
 
 
+def dump_config_object(obj: Any) -> Any:
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump(mode="json")
+    return repr(obj)
+
+
 @dataclass
 class Plan:
     model_type: str
@@ -281,7 +287,7 @@ def build_deepmd(args: argparse.Namespace, properties: list[str]) -> tuple[Any, 
     )
     protocol = {
         "mode": "multihead",
-        "heads": [getattr(head, "model_dump", lambda **_: repr(head))(mode="json") for head in heads],
+        "heads": [dump_config_object(head) for head in heads],
         "domains": domains_raw,
         "sampling_weight": sampling,
         "loss_weight": loss_weights,
@@ -353,7 +359,7 @@ def build_chgnet(args: argparse.Namespace, properties: list[str]) -> tuple[Any, 
 def build_mace(args: argparse.Namespace, properties: list[str]) -> tuple[Any, str, str, list[str], list[Any], dict[str, Any]]:
     from mattertune.backbones.mace_foundation.model import MACEBackboneConfig
     from mattertune.finetune.optimizer import AdamWConfig
-    from mattertune.recipes.lora import LoRARecipeConfig, LoraConfig
+    from mattertune.recipes.lora import LoraConfig, LoRARecipeConfig
 
     if not args.trust_checkpoint:
         raise SystemExit("MACE requires --trust-checkpoint for local torch/pickle checkpoint loading")

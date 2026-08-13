@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse, json
-from datetime import datetime, timezone
+
+import argparse
+import json
+from datetime import UTC, datetime
 from pathlib import Path
 
+
 def utc_now():
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace('+00:00', 'Z')
 
 def main():
     p = argparse.ArgumentParser(description='Append a JSONL time event.')

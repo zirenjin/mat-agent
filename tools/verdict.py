@@ -43,7 +43,7 @@ try:
 except ImportError:
     # Fallback for when tools/ is not on path — inline the logic
     import warnings
-    warnings.warn("ase_conventions not importable; using inline fallbacks")
+    warnings.warn("ase_conventions not importable; using inline fallbacks", stacklevel=2)
     def _get_info_key(atoms, *keys):
         for k in keys:
             if k in atoms.info:
@@ -54,10 +54,18 @@ except ImportError:
             if k in atoms.arrays:
                 return np.asarray(atoms.arrays[k], dtype=np.float64)
         return None
-    get_pred_energy = lambda a: _get_info_key(a, "pred_energy", "MACE_energy", "mace_energy", "dpmd_energy", "energy")
-    get_pred_forces = lambda a: _get_array_key(a, "pred_forces", "MACE_forces", "mace_forces", "dpmd_forces", "forces")
-    get_ref_energy  = lambda a: _get_info_key(a, "ref_energy", "energy")
-    get_ref_forces  = lambda a: _get_array_key(a, "ref_forces", "forces")
+
+    def get_pred_energy(atoms):
+        return _get_info_key(atoms, "pred_energy", "MACE_energy", "mace_energy", "dpmd_energy", "energy")
+
+    def get_pred_forces(atoms):
+        return _get_array_key(atoms, "pred_forces", "MACE_forces", "mace_forces", "dpmd_forces", "forces")
+
+    def get_ref_energy(atoms):
+        return _get_info_key(atoms, "ref_energy", "energy")
+
+    def get_ref_forces(atoms):
+        return _get_array_key(atoms, "ref_forces", "forces")
 
 
 def parse_args():
@@ -94,7 +102,7 @@ def main():
     e_pred, e_true, f_errs = [], [], []
     n_skipped = 0
 
-    for p, t in zip(preds, truths):
+    for p, t in zip(preds, truths, strict=True):
         ep = get_pred_energy(p)
         et = get_ref_energy(t)
         fp = get_pred_forces(p)
@@ -138,7 +146,7 @@ def main():
 
     if "tags" in truths[0].arrays:
         tag_errors: dict[int, list] = {}
-        for p, t in zip(preds, truths):
+        for p, t in zip(preds, truths, strict=True):
             fp = get_pred_forces(p)
             ft = get_ref_forces(t)
             tags = t.arrays.get("tags")
@@ -163,10 +171,6 @@ def main():
         free_errs = []
         all_errs = []
         n_free = n_all = 0
-        for err_list, tag_val in zip(tag_errors.values(), tag_errors.keys()):
-            for err in err_list[tag_val] if isinstance(err_list, dict) else []:
-                pass  # logic above already split
-        # Re-compute from tag_errors
         for tag, errs_list in tag_errors.items():
             flat = np.concatenate(errs_list)
             n_all += len(flat) // 3
@@ -222,19 +226,19 @@ def main():
 
     # --- Console report ---
     dataset_label = args.dataset_label or "unknown"
-    print("\n=== {} on {} ===".format(args.model_label, dataset_label))
+    print(f"\n=== {args.model_label} on {dataset_label} ===")
     print(f"N structures: {len(e_pred)}")
-    print(f"")
+    print("")
     print(f"Force MAE:   {mae_f:.2f} meV/A")
     print(f"Force RMSE:  {rmse_f:.2f} meV/A    (verdict: {force_verdict})")
-    print(f"")
+    print("")
     print(f"Energy MAE (raw):      {mae_e_raw:.2f} meV/atom")
     print(f"Energy RMSE (raw):     {rmse_e_raw:.2f} meV/atom")
     print(f"Energy MAE (centered): {mae_e_ctr:.2f} meV/atom  <- offset-corrected")
     print(f"Energy RMSE (centered):{rmse_e_ctr:.2f} meV/atom")
-    print(f"")
+    print("")
     print(f"Note: {e_note}")
-    print(f"")
+    print("")
     print(f"OVERALL VERDICT: {force_verdict}")
 
     # --- Build output dict ---

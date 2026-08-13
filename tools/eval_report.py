@@ -11,13 +11,12 @@ from __future__ import annotations
 import argparse
 import json
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 import numpy as np
 from ase.io import read
-
 from ase_conventions import get_pred_energy, get_pred_forces, get_ref_energy, get_ref_forces
 
 
@@ -36,7 +35,7 @@ def parse_args() -> argparse.Namespace:
 
 def timestamp() -> str:
     """Return an ISO-8601 UTC timestamp."""
-    return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    return datetime.now(UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def write_json(path: str, payload: dict[str, Any]) -> None:
@@ -60,7 +59,7 @@ def compute_uncertainty_stats(preds: list[Any], threshold: float) -> dict[str, A
     high = values > threshold
     global_mean = float(np.mean(values)) if len(values) else 0.0
     by_element: dict[str, list[float]] = defaultdict(list)
-    for atoms, value in zip(preds, values):
+    for atoms, value in zip(preds, values, strict=True):
         for sym in sorted(set(atoms.get_chemical_symbols())):
             by_element[sym].append(float(value))
     breakdown = {sym: float(np.mean(vals)) for sym, vals in sorted(by_element.items())}
@@ -89,7 +88,7 @@ def main() -> None:
         if n == 0:
             raise ValueError("no structures found")
         e_errs, f_errs = [], []
-        for idx, (pred, truth) in enumerate(zip(preds, truths)):
+        for idx, (pred, truth) in enumerate(zip(preds, truths, strict=True)):
             ep, et = get_pred_energy(pred), get_ref_energy(truth)
             fp, ft = get_pred_forces(pred), get_ref_forces(truth)
             if ep is None or et is None or fp is None or ft is None:

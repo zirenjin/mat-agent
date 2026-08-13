@@ -10,7 +10,6 @@ import argparse
 
 from _common import emit
 
-
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description="Whether predicted and reference space-group labels match", allow_abbrev=False)
     p.add_argument("--pred", required=True)

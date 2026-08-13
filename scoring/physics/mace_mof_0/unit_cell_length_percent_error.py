@@ -8,7 +8,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from _common import emit, scalar_parser
 
-
 if __name__ == "__main__":
     args = scalar_parser("Percent deviation of equilibrium unit-cell length relative to reference").parse_args()
     if args.ref == 0:

@@ -2,13 +2,11 @@
 from __future__ import annotations
 
 import math
-
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "machine_learning"))
-from _common import paired_parser, paired_values, emit  # noqa: E402
-
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "machine_learning"))
+from _common import emit, paired_parser, paired_values  # noqa: E402
 
 if __name__ == "__main__":
     args = paired_parser("RMSE between predicted and reference phonon frequencies").parse_args()
