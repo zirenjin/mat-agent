@@ -30,6 +30,8 @@ class MatterTuneBashDryRunMatrixTest(unittest.TestCase):
         cls.ckpt.write_text("checkpoint", encoding="utf-8")
         cls.train = cls.work / "train.extxyz"
         cls.train.write_text("1\n", encoding="utf-8")
+        cls.val = cls.work / "val.extxyz"
+        cls.val.write_text("1\n", encoding="utf-8")
         cls.replay = cls.work / "replay.extxyz"
         cls.replay.write_text("1\n", encoding="utf-8")
         cls.fisher = cls.work / "fisher.pt"
@@ -66,8 +68,9 @@ class MatterTuneBashDryRunMatrixTest(unittest.TestCase):
                 def __init__(self, **kwargs):
                     for key, value in kwargs.items():
                         setattr(self, key, value)
-                    if self.name is not None:
-                        self.name = self.__class__.name
+                    class_name = self.__class__.__dict__.get("name")
+                    if class_name is not None:
+                        self.name = class_name
 
                 def model_dump(self, **_kwargs):
                     def dump(value):
@@ -126,7 +129,30 @@ class MatterTuneBashDryRunMatrixTest(unittest.TestCase):
         )
         write(
             cls.fake_mattertune / "main.py",
-            "from mattertune.fake_config import ConfigObject\nclass TrainerConfig(ConfigObject):\n    pass\nclass MatterTunerConfig(ConfigObject):\n    pass\n",
+            """
+            from types import SimpleNamespace
+            from mattertune.fake_config import ConfigObject
+
+            class TrainerConfig(ConfigObject):
+                pass
+
+            class ModelCheckpointConfig(ConfigObject):
+                name = 'model_checkpoint'
+
+            class MatterTunerConfig(ConfigObject):
+                pass
+
+            class _FakeModel:
+                def execution_metadata(self, trainer):
+                    return {"fake_tune_called": True, "trainer": repr(trainer)}
+
+            class MatterTuner:
+                def __init__(self, config):
+                    self.config = config
+
+                def tune(self):
+                    return SimpleNamespace(model=_FakeModel(), trainer=SimpleNamespace(global_step=1))
+            """,
         )
         write(
             cls.fake_mattertune / "backbones/deepmd/model.py",
@@ -180,6 +206,10 @@ class MatterTuneBashDryRunMatrixTest(unittest.TestCase):
             cls.fake_mattertune / "recipes/lora.py",
             "from mattertune.fake_config import ConfigObject\nclass LoraConfig(ConfigObject):\n    pass\nclass LoRARecipeConfig(ConfigObject):\n    pass\n",
         )
+        write(
+            cls.fake_mattertune / "recipes/ema.py",
+            "from mattertune.fake_config import ConfigObject\nclass EMARecipeConfig(ConfigObject):\n    name = 'ema'\n",
+        )
 
     def run_adapter(self, *args: str) -> subprocess.CompletedProcess[str]:
         env = os.environ.copy()
@@ -194,8 +224,8 @@ class MatterTuneBashDryRunMatrixTest(unittest.TestCase):
             check=False,
         )
 
-    def common(self, run_name: str) -> list[str]:
-        return [
+    def common(self, run_name: str, *, dry_run: bool = True, val_data: bool = False) -> list[str]:
+        args = [
             "--checkpoint",
             str(self.ckpt),
             "--train-data",
@@ -204,9 +234,13 @@ class MatterTuneBashDryRunMatrixTest(unittest.TestCase):
             f"playground/runs/test-matrix-{run_name}",
             "--learning-rate",
             "1e-4",
-            "--dry-run",
-            "--json",
         ]
+        if val_data:
+            args.extend(["--val-data", str(self.val)])
+        if dry_run:
+            args.append("--dry-run")
+        args.append("--json")
+        return args
 
     def assert_plan(
         self, proc: subprocess.CompletedProcess[str], *, model: str, backbone: str, required: set[str]
@@ -347,6 +381,137 @@ class MatterTuneBashDryRunMatrixTest(unittest.TestCase):
         for name, args, model, backbone, required in cases:
             with self.subTest(name=name):
                 self.assert_plan(self.run_adapter(*args), model=model, backbone=backbone, required=required)
+
+    def test_mace_multihead_plan_passes_selected_head_to_mattertune_config(self) -> None:
+        proc = self.run_adapter(
+            "mace",
+            "--trust-checkpoint",
+            "--head-mode",
+            "multi_head",
+            "--head",
+            "pbe_d3",
+            *self.common("mace-selected-head"),
+            "--properties",
+            "energy,forces",
+            "--energy-key",
+            "dft_energy",
+            "--forces-key",
+            "dft_forces",
+        )
+        plan = self.assert_plan(proc, model="mace", backbone="mace", required={"multi_head"})
+        self.assertEqual(plan["protocol"]["head"], "pbe_d3")
+        self.assertEqual(plan["config_preview"]["model"]["head"], "pbe_d3")
+        self.assertEqual(plan["config_preview"]["data"]["train"]["energy_key"], "dft_energy")
+        self.assertEqual(plan["config_preview"]["data"]["train"]["forces_key"], "dft_forces")
+
+    def test_mace_tier_d_plan_exposes_loss_weights_and_trainer_controls(self) -> None:
+        proc = self.run_adapter(
+            "mace",
+            "--trust-checkpoint",
+            "--head-mode",
+            "single_head",
+            *self.common("mace-tier-d"),
+            "--properties",
+            "energy,forces,stresses",
+            "--energy-weight",
+            "1",
+            "--forces-weight",
+            "10",
+            "--stress-weight",
+            "100",
+            "--max-epochs",
+            "2500",
+            "--devices",
+            "0,1",
+            "--strategy",
+            "ddp",
+            "--ema",
+            "--ema-decay",
+            "0.995",
+        )
+        plan = self.assert_plan(proc, model="mace", backbone="mace", required={"single_head"})
+        self.assertEqual(plan["protocol"]["loss_weights"], {"energy": 1.0, "forces": 10.0, "stresses": 100.0})
+        preview = plan["config_preview"]
+        properties = {item["name"]: item for item in preview["model"]["properties"]}
+        self.assertEqual(properties["energy"]["loss_coefficient"], 1.0)
+        self.assertEqual(properties["forces"]["loss_coefficient"], 10.0)
+        self.assertEqual(properties["stresses"]["loss_coefficient"], 100.0)
+        self.assertEqual(preview["trainer"]["max_epochs"], 2500)
+        self.assertEqual(preview["trainer"]["devices"], [0, 1])
+        self.assertEqual(preview["trainer"]["strategy"], "ddp")
+        checkpoint = preview["trainer"]["checkpoint"]
+        self.assertEqual(checkpoint["dirpath"], "playground/runs/test-matrix-mace-tier-d/checkpoints")
+        self.assertEqual(checkpoint["filename"], "periodic-epoch={epoch:04d}-step={step}")
+        self.assertEqual(checkpoint["every_n_epochs"], 100)
+        self.assertEqual(checkpoint["save_last"], True)
+        self.assertEqual(checkpoint["save_top_k"], -1)
+        self.assertNotIn("monitor", checkpoint)
+        self.assertEqual(preview["trainer"]["checkpoints"], [])
+        self.assertEqual(preview["recipes"][0]["name"], "ema")
+        self.assertEqual(preview["recipes"][0]["decay"], 0.995)
+
+    def test_validation_split_adds_best_checkpoint_callback(self) -> None:
+        proc = self.run_adapter(
+            "mace",
+            "--trust-checkpoint",
+            "--head-mode",
+            "single_head",
+            *self.common("mace-tier-d-val", val_data=True),
+            "--properties",
+            "energy,forces",
+            "--checkpoint-every-n-epochs",
+            "25",
+        )
+        plan = self.assert_plan(proc, model="mace", backbone="mace", required={"single_head"})
+        trainer = plan["config_preview"]["trainer"]
+        self.assertEqual(trainer["checkpoint"]["filename"], "periodic-epoch={epoch:04d}-step={step}")
+        self.assertEqual(trainer["checkpoint"]["every_n_epochs"], 25)
+        self.assertNotIn("monitor", trainer["checkpoint"])
+        self.assertEqual(len(trainer["checkpoints"]), 1)
+        best = trainer["checkpoints"][0]
+        self.assertEqual(best["filename"], "best-val_loss-epoch={epoch:04d}-step={step}")
+        self.assertEqual(best["monitor"], "val_loss")
+        self.assertEqual(best["mode"], "min")
+        self.assertEqual(best["save_top_k"], 1)
+        self.assertEqual(best["every_n_epochs"], 1)
+
+    def test_mace_single_head_non_dry_run_calls_mattertuner(self) -> None:
+        manifest = self.tmp_path / "run_manifest.json"
+        proc = self.run_adapter(
+            "mace",
+            "--trust-checkpoint",
+            "--head-mode",
+            "single_head",
+            *self.common("mace-execute", dry_run=False),
+            "--properties",
+            "energy,forces",
+            "--max-steps",
+            "1",
+            "--manifest",
+            str(manifest),
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("training_status=completed", proc.stdout)
+        run_manifest = json.loads(manifest.read_text(encoding="utf-8"))
+        self.assertEqual(run_manifest["training_status"], "completed")
+        self.assertEqual(run_manifest["execution_metadata"]["fake_tune_called"], True)
+
+    def test_mace_multihead_non_dry_run_is_refused_until_native_parity(self) -> None:
+        proc = self.run_adapter(
+            "mace",
+            "--trust-checkpoint",
+            "--head-mode",
+            "multi_head",
+            "--head",
+            "mof0",
+            *self.common("mace-multihead-execute", dry_run=False),
+            "--properties",
+            "energy,forces",
+            "--max-steps",
+            "1",
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("native MACE multi-head replay is not Tier D verified", proc.stderr)
 
     def test_wrong_model_flags_are_rejected(self) -> None:
         cases = [

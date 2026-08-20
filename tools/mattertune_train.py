@@ -289,6 +289,25 @@ def int_or_auto(value: str) -> int | str:
     return parsed
 
 
+def parse_devices(value: str) -> int | str | list[int]:
+    if value in {"auto", "all"}:
+        return value
+    if "," in value:
+        try:
+            devices = [int(part.strip()) for part in value.split(",") if part.strip()]
+        except ValueError as exc:
+            raise argparse.ArgumentTypeError(
+                "devices must be auto, all, an integer, or comma-separated integers"
+            ) from exc
+        if not devices:
+            raise argparse.ArgumentTypeError("devices list must not be empty")
+        return devices
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("devices must be auto, all, an integer, or comma-separated integers") from exc
+
+
 def parse_csv(value: str) -> list[str]:
     values = [part.strip() for part in value.split(",") if part.strip()]
     if not values:
@@ -360,7 +379,12 @@ def require_sandbox_run_dir(run_dir_value: str) -> str:
     return str(path)
 
 
-def property_configs(properties: list[str], *, energy_basis: str = "total") -> list[Any]:
+def property_configs(
+    properties: list[str],
+    *,
+    energy_basis: str = "total",
+    loss_coefficients: dict[str, float] | None = None,
+) -> list[Any]:
     from mattertune.finetune.loss import MAELossConfig
     from mattertune.finetune.properties import (
         EnergyPropertyConfig,
@@ -369,16 +393,28 @@ def property_configs(properties: list[str], *, energy_basis: str = "total") -> l
         StressesPropertyConfig,
     )
 
+    coefficients = loss_coefficients or {}
     configs: list[Any] = []
     for prop in properties:
+        coefficient = float(coefficients.get(prop, 1.0))
         if prop == "energy":
-            configs.append(EnergyPropertyConfig(loss=MAELossConfig(), loss_basis=energy_basis))
+            configs.append(
+                EnergyPropertyConfig(loss=MAELossConfig(), loss_basis=energy_basis, loss_coefficient=coefficient)
+            )
         elif prop == "forces":
-            configs.append(ForcesPropertyConfig(loss=MAELossConfig(), conservative=True))
+            configs.append(ForcesPropertyConfig(loss=MAELossConfig(), conservative=True, loss_coefficient=coefficient))
         elif prop == "stresses":
-            configs.append(StressesPropertyConfig(loss=MAELossConfig(), conservative=True))
+            configs.append(
+                StressesPropertyConfig(loss=MAELossConfig(), conservative=True, loss_coefficient=coefficient)
+            )
         elif prop == "magnetic_moments":
-            configs.append(MagneticMomentsPropertyConfig(loss=MAELossConfig(), sign_convention="unsigned_magnitude"))
+            configs.append(
+                MagneticMomentsPropertyConfig(
+                    loss=MAELossConfig(),
+                    sign_convention="unsigned_magnitude",
+                    loss_coefficient=coefficient,
+                )
+            )
         else:
             raise SystemExit(f"unsupported property: {prop}")
     return configs
@@ -402,23 +438,60 @@ def properties_for_chgnet_objective(objective: str, cli_properties: list[str]) -
 def common_config(args: argparse.Namespace, model_config: Any, recipes: list[Any] | None = None) -> Any:
     from mattertune.data.datamodule import ManualSplitDataModuleConfig
     from mattertune.data.xyz import XYZDatasetConfig
-    from mattertune.main import MatterTunerConfig, TrainerConfig
+    from mattertune.main import MatterTunerConfig, ModelCheckpointConfig, TrainerConfig
 
-    validation = XYZDatasetConfig(src=args.val_data) if args.val_data else None
+    recipes = list(recipes or [])
+    if getattr(args, "ema", False):
+        from mattertune.recipes.ema import EMARecipeConfig
+
+        recipes.append(EMARecipeConfig(decay=args.ema_decay))
+
+    xyz_kwargs = {
+        "energy_key": args.energy_key,
+        "forces_key": args.forces_key,
+        "stress_key": args.stress_key,
+    }
+    validation = XYZDatasetConfig(src=args.val_data, **xyz_kwargs) if args.val_data else None
+    checkpoint_dir = str(Path(args.run_dir) / "checkpoints")
+    periodic_checkpoint = ModelCheckpointConfig(
+        dirpath=checkpoint_dir,
+        filename="periodic-epoch={epoch:04d}-step={step}",
+        save_last=True,
+        save_top_k=-1,
+        every_n_epochs=args.checkpoint_every_n_epochs,
+        save_on_train_epoch_end=True,
+    )
+    best_checkpoints = [
+        ModelCheckpointConfig(
+            dirpath=checkpoint_dir,
+            filename="best-val_loss-epoch={epoch:04d}-step={step}",
+            monitor="val_loss",
+            mode="min",
+            save_top_k=1,
+            every_n_epochs=1,
+            save_on_train_epoch_end=False,
+        )
+    ] if args.val_data else []
     trainer_kwargs = {"inference_mode": False}
     data = ManualSplitDataModuleConfig(
-        train=XYZDatasetConfig(src=args.train_data),
+        train=XYZDatasetConfig(src=args.train_data, **xyz_kwargs),
         validation=validation,
         batch_size=args.batch_size,
         num_workers=args.num_workers,
     )
     trainer = TrainerConfig(
+        accelerator=args.accelerator,
+        devices=args.devices,
+        strategy=args.strategy,
+        precision=args.precision,
         max_steps=args.max_steps,
-        max_epochs=None,
+        max_epochs=args.max_epochs,
         deterministic=True,
+        checkpoint=periodic_checkpoint,
+        checkpoints=best_checkpoints,
         additional_trainer_kwargs=trainer_kwargs,
     )
-    return MatterTunerConfig(model=model_config, data=data, trainer=trainer, recipes=recipes or [])
+    return MatterTunerConfig(model=model_config, data=data, trainer=trainer, recipes=recipes)
 
 
 def build_deepmd(args: argparse.Namespace, properties: list[str]) -> tuple[Any, str, str, list[str], dict[str, Any]]:
@@ -565,9 +638,15 @@ def build_mace(
         raise SystemExit("MACE requires --trust-checkpoint for local torch/pickle checkpoint loading")
     if args.head_mode == "multi_head" and not args.head:
         raise SystemExit("MACE --head-mode multi_head requires --head")
+    loss_coefficients = {
+        "energy": args.energy_weight,
+        "forces": args.forces_weight,
+        "stresses": args.stress_weight,
+    }
     model = MACEBackboneConfig(
         pretrained_model=args.checkpoint,
-        properties=property_configs(properties),
+        head=args.head,
+        properties=property_configs(properties, loss_coefficients=loss_coefficients),
         optimizer=AdamWConfig(lr=args.learning_rate),
     )
     recipes: list[Any] = []
@@ -592,6 +671,9 @@ def build_mace(
         "lora": args.lora,
         "lora_rank": args.lora_rank if args.lora else None,
         "lora_alpha": args.lora_alpha if args.lora else None,
+        "loss_weights": {key: value for key, value in loss_coefficients.items() if key in properties},
+        "native_mace_multihead_replay": False,
+        "tier_d_execution": args.head_mode == "single_head",
     }
     return model, mode, "full", required, recipes, protocol
 
@@ -650,9 +732,18 @@ def add_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--num-workers", type=int_or_auto, default=0)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--learning-rate", type=float)
-    parser.add_argument("--max-steps", type=int, default=10)
+    parser.add_argument("--max-steps", type=int, default=-1)
+    parser.add_argument("--max-epochs", type=int)
+    parser.add_argument("--accelerator", default="auto")
+    parser.add_argument("--devices", type=parse_devices, default="auto")
+    parser.add_argument("--strategy", default="auto")
+    parser.add_argument("--precision", default="32-true")
+    parser.add_argument("--checkpoint-every-n-epochs", type=int, default=100)
+    parser.add_argument("--energy-key")
+    parser.add_argument("--forces-key")
+    parser.add_argument("--stress-key")
     parser.add_argument("--resume-from")
-    parser.add_argument("--dry-run", action="store_true", required=True)
+    parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--manifest")
 
@@ -699,16 +790,30 @@ def build_parser() -> argparse.ArgumentParser:
     mace.add_argument("--lora", action="store_true")
     mace.add_argument("--lora-rank", type=int)
     mace.add_argument("--lora-alpha", type=int)
+    mace.add_argument("--energy-weight", type=float, default=1.0)
+    mace.add_argument("--forces-weight", type=float, default=1.0)
+    mace.add_argument("--stress-weight", type=float, default=1.0)
+    mace.add_argument("--ema", action="store_true")
+    mace.add_argument("--ema-decay", type=float, default=0.995)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    if not args.dry_run:
-        raise SystemExit("only --dry-run execution planning is supported by this adapter")
+    if not args.dry_run and args.model_type != "mace":
+        raise SystemExit("training execution is currently Tier D only for MACE; use --dry-run for other models")
+    if not args.dry_run and args.head_mode != "single_head":
+        raise SystemExit(
+            "MACE non-dry-run execution currently supports MatterTune single-head/full fine-tuning only; "
+            "native MACE multi-head replay is not Tier D verified"
+        )
+    if not args.dry_run and args.max_steps == -1 and args.max_epochs is None:
+        raise SystemExit("non-dry-run training requires --max-steps or --max-epochs to make the budget explicit")
     if args.learning_rate is None:
         raise SystemExit("--learning-rate is required until model-native optimizer defaults are encoded per protocol")
+    if args.checkpoint_every_n_epochs < 1:
+        raise SystemExit("--checkpoint-every-n-epochs must be >= 1")
 
     properties = parse_csv(args.properties)
     train_data = require_existing_file(args.train_data, "--train-data")
@@ -774,7 +879,45 @@ def main(argv: list[str] | None = None) -> int:
         config_preview=config_to_preview(mt_config),
         protocol=protocol,
     )
-    emit(plan, args)
+    if args.dry_run:
+        emit(plan, args)
+        return 0
+
+    run_manifest = Path(args.manifest) if args.manifest else Path(plan.run_dir) / "run_manifest.json"
+    run_manifest.parent.mkdir(parents=True, exist_ok=True)
+    run_manifest.write_text(
+        json.dumps({**plan.as_dict(), "training_status": "started"}, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    from mattertune.main import MatterTuner
+
+    output = MatterTuner(mt_config).tune()
+    metadata: dict[str, Any] = {}
+    if hasattr(output.model, "execution_metadata"):
+        try:
+            execution_metadata = output.model.execution_metadata(output.trainer)
+            metadata = (
+                execution_metadata.model_dump(mode="json")
+                if hasattr(execution_metadata, "model_dump")
+                else dict(execution_metadata)
+            )
+        except Exception as exc:  # pragma: no cover - best-effort run artifact enrichment
+            metadata = {"execution_metadata_error": f"{type(exc).__name__}: {exc}"}
+    run_manifest.write_text(
+        json.dumps(
+            {
+                **plan.as_dict(),
+                "training_status": "completed",
+                "execution_metadata": metadata,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    print("training_status=completed")
+    print(f"manifest={run_manifest}")
     return 0
 
 

@@ -49,6 +49,7 @@ The v1 Bash adapter subcommands are `deepmd`, `sevennet`, `chgnet`, and `mace` w
 | `--seed N` | no | Reproducibility seed for protocol elements that need one. |
 | `--learning-rate LR` | protocol-dependent | Optimizer learning-rate override. It is not a universal scientific default. |
 | `--max-steps N` | no | Step budget. |
+| `--checkpoint-every-n-epochs N` | no | Periodic checkpoint cadence. Default: `100`; must be >= 1. |
 | `--resume-from PATH` | no | Explicit checkpoint to resume from. |
 | `--dry-run` | no | Build and validate an execution plan without starting training. |
 | `--json` | no | Emit JSON instead of stable `key=value`. |
@@ -168,32 +169,51 @@ CHGNet magnetic moments use `unsigned_magnitude` semantics. Signed magnetic mome
 
 ## 8. MACE Training Protocols
 
+MatterTune MACE Tier D currently means real MatterTune execution for single-head/full fine-tuning with explicit objective, trainer, and EMA controls. It does not claim native MACE multi-head replay parity.
+
 ```bash
 train.sh mace \
   --checkpoint /mnt/checkpoints/mace.model \
   --trust-checkpoint \
-  --head-mode multi_head \
-  --head MP \
+  --head-mode single_head \
   --train-data train.extxyz \
+  --val-data val.extxyz \
   --run-dir playground/runs/run_id \
-  --properties energy,forces \
-  --lora \
-  --lora-rank 8 \
-  --lora-alpha 1 \
-  --learning-rate 1e-4
+  --properties energy,forces,stresses \
+  --energy-weight 1 \
+  --forces-weight 10 \
+  --stress-weight 100 \
+  --learning-rate 0.005 \
+  --batch-size 8 \
+  --max-epochs 2500 \
+  --ema \
+  --ema-decay 0.995
 ```
 
 | Argument | Required | Meaning |
 | --- | --- | --- |
 | `--checkpoint PATH` | yes | Trusted local MACE checkpoint file. Named checkpoint download/resolution is not the canonical path. |
 | `--trust-checkpoint` | yes | Acknowledge trusted local pickle / `torch.load` checkpoint semantics. |
-| `--head-mode single_head|multi_head` | yes | Select MACE head protocol family. |
-| `--head HEAD` | required for `multi_head` | Target head for multi-head checkpoints. |
+| `--head-mode single_head|multi_head` | yes | Select MACE head protocol family. Non-dry-run execution is Tier D only for `single_head`. |
+| `--head HEAD` | required for `multi_head` | Target head for multi-head checkpoints in planning. Multi-head training execution is refused until native parity is implemented. |
+| `--energy-weight FLOAT` | no | Energy loss coefficient; default `1.0`. |
+| `--forces-weight FLOAT` | no | Forces loss coefficient; default `1.0`. |
+| `--stress-weight FLOAT` | no | Stress loss coefficient; default `1.0`. |
+| `--max-epochs N` | no | Epoch budget. Required for paper-like epoch-based recipes unless `--max-steps` is used. |
+| `--accelerator NAME` | no | Lightning accelerator, default `auto`. |
+| `--devices auto|all|N|LIST` | no | Lightning devices, e.g. `auto`, `1`, or `0,1,2,3`. |
+| `--strategy NAME` | no | Lightning strategy, default `auto`. |
+| `--precision NAME` | no | Lightning precision, default `32-true`. |
+| `--energy-key KEY` | no | EXTXYZ `Atoms.info` key to expose as canonical ASE potential energy label, e.g. `dft_energy`. |
+| `--forces-key KEY` | no | EXTXYZ `Atoms.arrays` key to expose as canonical ASE forces label, e.g. `dft_forces`. |
+| `--stress-key KEY` | no | EXTXYZ `Atoms.info` key to expose as canonical ASE stress label, e.g. `dft_stress`. |
+| `--ema` | no | Apply MatterTune EMA recipe. |
+| `--ema-decay FLOAT` | required with `--ema` by protocol convention | EMA decay; default `0.995`. |
 | `--lora` | no | Apply MatterTune LoRA recipe. |
 | `--lora-rank N` | required when `--lora` is used | LoRA rank. |
 | `--lora-alpha N` | required when `--lora` is used | LoRA alpha. |
 
-The Bash API MUST NOT expose MACE replay, pseudo-label replay, or layer-freeze flags until those protocol families are represented by MatterTune capability/parity metadata and stable adapter code.
+The Bash API MUST NOT execute MACE replay, pseudo-label replay, or native multi-head replay until those protocol families are represented by MatterTune capability/parity metadata and stable adapter code. Dry-run may carry a multi-head plan, but non-dry-run multi-head execution MUST fail before training.
 
 ## 9. `inference.sh`
 
@@ -235,6 +255,16 @@ The Bash API MUST NOT expose MACE replay, pseudo-label replay, or layer-freeze f
 | evaluation report | `evaluate.sh` | Scorer name, split identity, metric values, input artifact identities, capability/parity metadata. |
 
 Run manifests MUST expose support/parity metadata obtained from MatterTune capability sources. The API spec does not hard-code current verification status values.
+
+## 11.1 Checkpoint Preservation
+
+MatterTune training launched through the adapter MUST preserve enough checkpoints for long-loop analysis and rollback:
+
+- The primary checkpoint callback writes to `<run-dir>/checkpoints` with `filename=periodic-epoch={epoch:04d}-step={step}`.
+- `save_last=True` is always enabled, so short tests that run fewer than the periodic cadence still preserve `last.ckpt` at train end.
+- `save_top_k=-1` is always enabled on the primary callback, so every periodic checkpoint selected by the cadence is retained.
+- `every_n_epochs` defaults to `100` and is controlled by `--checkpoint-every-n-epochs`.
+- If a validation split is present, a second checkpoint callback writes `best-val_loss-epoch={epoch:04d}-step={step}` with `monitor=val_loss`, `mode=min`, `save_top_k=1`, and `every_n_epochs=1`. This preserves the actual best validation checkpoint independently of the periodic archive cadence.
 
 ## 12. Exit Codes
 
