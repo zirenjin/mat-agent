@@ -1,0 +1,93 @@
+TaskName: mof0_paper_reproduce
+Description: 'Native MACE MACE-MP-MOF0 paper reproduction on 4 x A100. Multi-head
+  (pt_head + pbe_d3), PT-head replay 1000 structures, global batch 48. Bootstrap
+  mace-torch==0.3.9 + phonopy==2.29.0. MP replay assets fetched from ghproxy mirror
+  into vePFS shared cache. 100-step checkpoint archives.'
+Tags:
+- mace-mof0
+- paper-reproduction
+- native-mace
+- runtime-bootstrap
+Entrypoint: 'cd /GenSIvePFS/users/public/mat-agent
+
+  bash volc/scripts/run_mace_mof0_paper_reproduce.sh'
+Envs:
+- Name: MACE_MOF0_ROOT
+  Value: /GenSIvePFS/users/public/mat-agent
+  IsPrivate: false
+- Name: MACE_MOF0_TASK_NAME
+  Value: mof0 paper reproduce
+  IsPrivate: false
+- Name: MACE_MOF0_IMAGE
+  Value: gensi-cn-beijing.cr.volces.com/ai4science/mlip_agent:v1
+  IsPrivate: false
+- Name: MACE_MOF0_GPUS
+  Value: '4'
+  IsPrivate: false
+- Name: MACE_MOF0_PER_GPU_BATCH
+  Value: '12'
+  IsPrivate: false
+- Name: MACE_STEP_CHECKPOINT_INTERVAL
+  Value: '100'
+  IsPrivate: false
+- Name: TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD
+  Value: '1'
+  IsPrivate: false
+- Name: PYTHONUNBUFFERED
+  Value: '1'
+  IsPrivate: false
+- Name: MACE_MOF0_PREFETCH_MP_REPLAY
+  Value: '1'
+  IsPrivate: false
+- Name: MACE_MOF0_MP_REPLAY_RETRIES_PER_URL
+  Value: '2'
+  IsPrivate: false
+- Name: MACE_MOF0_MP_REPLAY_DOWNLOAD_TIMEOUT
+  Value: '600'
+  IsPrivate: false
+ImageUrl: gensi-cn-beijing.cr.volces.com/ai4science/mlip_agent:v1
+ResourceQueueName: sia-thu
+Framework: PyTorchDDP
+TaskRoleSpecs:
+- RoleName: worker
+  RoleReplicas: 1
+  Flavor: ml.pni2.14xlarge
+ActiveDeadlineSeconds: 864000
+DelayExitTimeSeconds: 0
+EnableTensorBoard: true
+Storages:
+- Type: TosFuse
+  MountPath: /sia-thu
+  Bucket: sia-thu
+  Prefix: /
+- Type: Vepfs
+  MountPath: /GenSIvePFS/users/model
+  ReadOnly: false
+  SubPath: users/model
+  VepfsId: vepfs-cnbj5912665bc1be
+- Type: Vepfs
+  MountPath: /GenSIvePFS/users/public/mat-agent
+  ReadOnly: false
+  SubPath: users/public/mat-agent
+  VepfsId: vepfs-cnbj5912665bc1be
+TensorBoardStorage:
+  Type: Vepfs
+  MountPath: /tensorboard_logs
+  ReadOnly: false
+  SubPath: users/public/mat-agent/tensorboard_logs
+  VepfsId: vepfs-cnbj5912665bc1be
+AccessType: Public
+Preemptible: false
+Priority: 4
+RetryOptions:
+  EnableRetry: false
+  EnableReserveResourceOnRetry: false
+DiagOptions:
+- Name: EnvironmentalDiagnosis
+  Enable: false
+- Name: PythonDetection
+  Enable: false
+- Name: LogDetection
+  Enable: false
+- Name: VecclHangDetection
+  Enable: false

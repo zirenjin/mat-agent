@@ -1,0 +1,60 @@
+# Apples-to-apples phonon/NTE protocol for DOI 10.1038/s41524-025-01611-8.
+# Sources: paper Methods/phonon workflow and ddmms/data mace-mof-0 release configs.
+model:
+  label: reproduced_force_mh_ft_lr_pbe_d3
+  path: data/mace_mof_0/runs/mof0_paper_reproduce_force_mh_lr_20260829T124117Z/models/mof0_paper_reproduce.model
+  head: pbe_d3
+  provenance: data/mace_mof_0/runs/mof0_paper_reproduce_force_mh_lr_20260829T124117Z/results/checkpoint_structural_parity.json
+  note: Multi-head native MACE checkpoint trained with PT-head replay; phonon Table 5 evaluation must use the PBE-D3 head.
+software:
+  docker_image: mat-agent:mace-phonopy-janus
+  janus_core: 0.6.4
+  mace_torch: 0.3.9
+  phonopy: 2.29.0
+  click: 8.1.8
+phonons:
+  finite_difference_displacement_angstrom: 0.001
+  relaxation:
+    optimizer_stack: janus_core ASE/FrechetCellFilter path
+    fmax_ev_per_angstrom: 1.0e-6
+    symmetry_unconstrained_cell_relax: true
+  mesh: [11, 11, 11]
+  temperature_grid_K:
+    min: 0
+    max: 1000
+    step: 10
+  write_full: false
+  calculations: [bands, dos, thermal]
+materials:
+  MOF-5:
+    structure: data/mace_mof_0/results/phonon_nte_prep/structures/MOF-5.POSCAR
+    supercell: [2, 2, 2]
+    release_config_source: data/mace_mof_0/raw/phonons/MOF-5.zip::MOF-5/mof0/.ipynb_checkpoints/phonons-checkpoint.yml
+  UiO-66:
+    structure: data/mace_mof_0/results/phonon_nte_prep/structures/UiO-66.POSCAR
+    supercell: [2, 2, 2]
+    release_config_source: data/mace_mof_0/raw/phonons/UiO-66.zip::UiO-66/mof0-v2/.ipynb_checkpoints/phonons-checkpoint.yml
+  MIL-53:
+    structure: data/mace_mof_0/results/phonon_nte_prep/structures/MIL-53.POSCAR
+    supercell: [3, 1, 2]
+    release_config_source: data/mace_mof_0/raw/phonons/MIL-53.zip::MIL-53/mof0/.ipynb_checkpoints/phonons-checkpoint.yml
+    note: Paper prose says 2x2x2 generally, but the released Janus config for MIL-53 uses 3x1x2; use release config for apples-to-apples.
+  MOF-74:
+    structure: data/mace_mof_0/results/phonon_nte_prep/structures/MOF-74.POSCAR
+    supercell: [2, 2, 2]
+    release_config_source: paper phonon workflow; no Janus checkpoint config is present in MOF-74.zip
+    note: Reconfirm from TUGraz DFT archive once MOF-74.tar.gz is available.
+references:
+  release_repo: https://github.com/ddmms/data/tree/main/mace-mof-0
+  paper_doi: https://doi.org/10.1038/s41524-025-01611-8
+  tugraz_record: https://repository.tugraz.at/records/wyc7s-8en40
+  tugraz_doi: https://doi.org/10.3217/wyc7s-8en40
+  required_dft_archives:
+    MOF-5.tar.gz: 15c24738051921d1fe474fde3fa7e5f9
+    UiO-66.tar.gz: 4b859edcbe072c9c5cc269ebca71d8d4
+    MIL-53_lp.tar.gz: 4304c39b5343706a30ecdb14d6c9f148
+    MOF-74.tar.gz: 20c202e107e4f842b591a69248632dd0
+nte:
+  systems: [MOF-5, UiO-66]
+  target_curve_file: data/mace_mof_0/raw/NegativeThermalExpansion.csv
+  status: Needs QHA/volume-dependent phonon reference protocol; not replaced by harmonic thermal.dat.
