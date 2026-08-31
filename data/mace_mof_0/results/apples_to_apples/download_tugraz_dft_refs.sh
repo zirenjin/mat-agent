@@ -3,9 +3,10 @@ set -euo pipefail
 
 # TU Graz record wyc7s-8en40 currently returns 200 OK, not 206 Partial Content,
 # for Range probes on /content. That means aria2/wget/curl cannot do reliable
-# byte-range resume. This script uses one long transfer per archive, writes only
-# to .part files, verifies MD5 and byte size, then atomically publishes the file.
-# If a transfer fails, the next attempt restarts from byte 0.
+# byte-range resume. Fastest tested path from this environment is direct
+# no-proxy curl, with one full-file connection per archive and the four required
+# archives running in parallel. Each archive writes to .part, verifies byte size
+# and MD5, then atomically publishes the final .tar.gz.
 
 ROOT="${ROOT:-/GenSIvePFS/users/public/mat-agent/data/mace_mof_0/external/tugraz_wyc7s-8en40}"
 BASE="https://repository.tugraz.at/api/records/wyc7s-8en40/files"
@@ -13,6 +14,8 @@ RETRY_SLEEP_SECONDS="${RETRY_SLEEP_SECONDS:-300}"
 STALL_SPEED_LIMIT_BPS="${STALL_SPEED_LIMIT_BPS:-2048}"
 STALL_TIME_SECONDS="${STALL_TIME_SECONDS:-900}"
 CONNECT_TIMEOUT_SECONDS="${CONNECT_TIMEOUT_SECONDS:-60}"
+PARALLEL_JOBS="${PARALLEL_JOBS:-4}"
+USE_PROXY="${USE_PROXY:-0}"
 
 mkdir -p "$ROOT"
 cd "$ROOT"
@@ -27,6 +30,11 @@ Archives:
   MIL-53_lp.tar.gz
   MOF-74.tar.gz
   MIL-53_np.tar.gz
+
+Environment:
+  PARALLEL_JOBS=4             Number of archives to download concurrently.
+  USE_PROXY=0                 Default bypasses proxy with curl --noproxy '*'.
+  RETRY_SLEEP_SECONDS=300     Sleep between full-file attempts.
 
 If no archive is given, downloads the four archives needed for paper Table 5:
 MOF-5, UiO-66, MIL-53_lp, and MOF-74.
@@ -72,24 +80,30 @@ download_one() {
   fi
 
   while true; do
-    echo "[start] $name attempt=$attempt expected_bytes=$bytes md5=$md5 time=$(date -Is)"
+    echo "[start] $name attempt=$attempt expected_bytes=$bytes md5=$md5 use_proxy=$USE_PROXY time=$(date -Is)"
     rm -f "$part"
+
+    local curl_args=(
+      --location
+      --fail
+      --show-error
+      --connect-timeout "$CONNECT_TIMEOUT_SECONDS"
+      --speed-limit "$STALL_SPEED_LIMIT_BPS"
+      --speed-time "$STALL_TIME_SECONDS"
+      --keepalive-time 60
+      --retry 20
+      --retry-all-errors
+      --retry-delay 60
+      --retry-max-time 0
+      --output "$part"
+      --write-out "[curl] $name http_code=%{http_code} size_download=%{size_download} speed_download=%{speed_download} time_total=%{time_total}\\n"
+    )
+    if [[ "$USE_PROXY" == "0" ]]; then
+      curl_args=(--noproxy '*' "${curl_args[@]}")
+    fi
+
     set +e
-    curl \
-      --location \
-      --fail \
-      --show-error \
-      --connect-timeout "$CONNECT_TIMEOUT_SECONDS" \
-      --speed-limit "$STALL_SPEED_LIMIT_BPS" \
-      --speed-time "$STALL_TIME_SECONDS" \
-      --keepalive-time 60 \
-      --retry 20 \
-      --retry-all-errors \
-      --retry-delay 60 \
-      --retry-max-time 0 \
-      --output "$part" \
-      --write-out '[curl] http_code=%{http_code} size_download=%{size_download} speed_download=%{speed_download} time_total=%{time_total}\n' \
-      "$url"
+    curl "${curl_args[@]}" "$url"
     local curl_rc=$?
     set -e
 
@@ -110,6 +124,23 @@ if [[ "$#" -eq 0 ]]; then
   set -- MOF-5.tar.gz UiO-66.tar.gz MIL-53_lp.tar.gz MOF-74.tar.gz
 fi
 
+if [[ "$PARALLEL_JOBS" -le 1 || "$#" -le 1 ]]; then
+  for archive in "$@"; do
+    download_one "$archive"
+  done
+  exit 0
+fi
+
+status=0
 for archive in "$@"; do
-  download_one "$archive"
+  while [[ "$(jobs -rp | wc -l)" -ge "$PARALLEL_JOBS" ]]; do
+    wait -n || status=1
+  done
+  download_one "$archive" &
 done
+
+while [[ "$(jobs -rp | wc -l)" -gt 0 ]]; do
+  wait -n || status=1
+done
+
+exit "$status"
