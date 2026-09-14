@@ -1,0 +1,83 @@
+TaskName: mof0_curvature_ft_e1
+Description: 'H1 Experiment E1: A0 short single-head pbe_d3 fine-tune of the fixed
+  MACE-MP-0b foundation on the discovery dev split (probe scale: 50 epochs
+  float32), then A1/A2/A3 Hessian dynamical-stability polish (beta sweep +
+  strict-minima subset), then a phonon-stability proxy eval on 3 held-out dev
+  systems. Produces per-arm checkpoints + eval.json + summary.json. 1 GPU.
+  Bootstraps mace-torch==0.3.9 + phonopy==2.29.0. Resumable.'
+Tags:
+- mace-mof0
+- h1-experiment-e1
+- stability-regularizer
+- runtime-bootstrap
+Entrypoint: 'cd /GenSIvePFS/users/public/mat-agent
+
+  bash volc/scripts/run_curvature_ft_e1.sh'
+Envs:
+- Name: MACE_MOF0_ROOT
+  Value: /GenSIvePFS/users/public/mat-agent
+  IsPrivate: false
+- Name: MACE_ABL_EPOCHS
+  Value: '50'
+  IsPrivate: false
+- Name: MACE_ABL_DTYPE
+  Value: float64
+  IsPrivate: false
+- Name: MACE_ABL_BATCH
+  Value: '16'
+  IsPrivate: false
+- Name: MACE_ABL_POLISH_STEPS
+  Value: '300'
+  IsPrivate: false
+- Name: TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD
+  Value: '1'
+  IsPrivate: false
+- Name: PYTHONUNBUFFERED
+  Value: '1'
+  IsPrivate: false
+ImageUrl: gensi-cn-beijing.cr.volces.com/ai4science/mlip_agent:v1
+ResourceQueueName: sia-thu
+Framework: PyTorchDDP
+TaskRoleSpecs:
+- RoleName: worker
+  RoleReplicas: 1
+  Flavor: ml.pni2.3xlarge
+ActiveDeadlineSeconds: 172800
+DelayExitTimeSeconds: 0
+EnableTensorBoard: true
+Storages:
+- Type: TosFuse
+  MountPath: /sia-thu
+  Bucket: sia-thu
+  Prefix: /
+- Type: Vepfs
+  MountPath: /GenSIvePFS/users/model
+  ReadOnly: false
+  SubPath: users/model
+  VepfsId: vepfs-cnbj5912665bc1be
+- Type: Vepfs
+  MountPath: /GenSIvePFS/users/public/mat-agent
+  ReadOnly: false
+  SubPath: users/public/mat-agent
+  VepfsId: vepfs-cnbj5912665bc1be
+TensorBoardStorage:
+  Type: Vepfs
+  MountPath: /tensorboard_logs
+  ReadOnly: false
+  SubPath: users/public/mat-agent/tensorboard_logs
+  VepfsId: vepfs-cnbj5912665bc1be
+AccessType: Public
+Preemptible: false
+Priority: 4
+RetryOptions:
+  EnableRetry: false
+  EnableReserveResourceOnRetry: false
+DiagOptions:
+- Name: EnvironmentalDiagnosis
+  Enable: false
+- Name: PythonDetection
+  Enable: false
+- Name: LogDetection
+  Enable: false
+- Name: VecclHangDetection
+  Enable: false

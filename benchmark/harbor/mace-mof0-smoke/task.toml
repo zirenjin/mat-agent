@@ -1,0 +1,109 @@
+# SMOKE track for the MACE-MP-MOF0 Autonomous Discovery Harbor task.
+#
+# Validates the autonomous-research PLUMBING end-to-end (Harbor -> Claude
+# Code -> compute broker -> Volc -> back -> Claude Code -> verifier) on a
+# short, cheap real trajectory. Does NOT replace or weaken
+# benchmark/harbor/mace-mof0/ (the standard/scored track) -- that task.toml,
+# its images, and benchmark/compute/policy.yaml's mace_mof0_discovery entry
+# are all untouched by this file. Scientific improvement is explicitly
+# non-gating here; see instruction.md and
+# benchmark/compute/policy.yaml's mace_mof0_discovery_smoke entry.
+#
+# Reuses the SAME built images as the standard track (mat-agent-harbor:latest,
+# mat-agent-harbor-verifier:latest, and the broker built from the same
+# environment/broker/Dockerfile) -- nothing about the images differs between
+# tracks, only this task.toml's timeouts and environment/docker-compose.yaml's
+# REMOTE_JOB_DEFAULT_TASK. Build via
+# benchmark/harbor/mace-mof0/environment/build.sh (there is no separate
+# build.sh here).
+schema_version = "1.4"
+
+artifacts = [
+    "/workspace/mat-agent/runs",
+    "/workspace/mat-agent/workspace",
+    "/workspace/mat-agent/playground/loop_db",
+]
+
+[task]
+name = "mat-agent/mace-mof0-discovery-smoke"
+version = "1"
+description = "SMOKE track: validate the Harbor + compute-broker + Volc autonomous-research loop end-to-end on a short, cheap real trajectory. Non-gating on scientific improvement."
+keywords = ["materials-science", "mlip", "mace", "autonomous-research", "smoke-test"]
+
+[metadata]
+science_task_card = "tasks/mace_mof0_discovery/task_card.md"
+science_protocol = "benchmark/evaluation/protocol.md"
+compute_policy = "benchmark/compute/policy.yaml (tasks.mace_mof0_discovery_smoke)"
+plumbing_checklist = "benchmark/harbor/mace-mof0-smoke/README.md"
+
+[agent]
+timeout_sec = 5400
+# 90 minutes -- upper end of the 60-90 min smoke wall-clock window. Real-time
+# ceiling across every iteration combined, matching the standard track's
+# [agent].timeout_sec semantics exactly (see that task.toml's comment); just
+# a much shorter number here.
+
+[environment]
+docker_image = "mat-agent-harbor:latest"
+workdir = "/workspace/mat-agent"
+network_mode = "public"
+env = { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1", HTTPS_PROXY = "socks5h://host-gateway:1080", HTTP_PROXY = "socks5h://host-gateway:1080", ALL_PROXY = "socks5h://host-gateway:1080", NO_PROXY = "localhost,127.0.0.1,broker,14.103.213.146" }
+# CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: needed when ANTHROPIC_BASE_URL
+# points at a third-party/proxy Anthropic-compatible endpoint (see
+# benchmark/harbor/README.md "Known blockers"): Claude Code otherwise makes
+# a client-side GET /v1/models/{id} call to validate the model before using
+# it, which this task's own gateway doesn't implement (only the OpenAI-style
+# GET /v1/models list), and fails the whole session with "There's an issue
+# with the selected model" even though the actual POST /v1/messages call
+# works fine -- confirmed by testing both directly. This is unrelated to
+# ClaudeCode._resolve_auth_env's own env dict (ANTHROPIC_API_KEY/
+# ANTHROPIC_BASE_URL/CLAUDE_CODE_OAUTH_TOKEN), which does NOT include this
+# var, hence setting it here rather than relying on that mechanism.
+#
+# *_PROXY / NO_PROXY: needed for the Codex agent path specifically --
+# api.openai.com and chatgpt.com are unreachable directly from a container
+# on this host (confirmed: DNS resolves to an unrelated IP and/or the TCP
+# connection times out), but ARE reachable through this host's own local
+# SOCKS5 egress proxy, itself only reachable from inside a container via
+# Docker's "host-gateway" special hostname (see this task's
+# environment/docker-compose.yaml `extra_hosts`) -- confirmed working
+# end-to-end with a real `codex exec` producing a real model response.
+# NO_PROXY excludes the broker (internal compose DNS name, would never
+# resolve through an external proxy anyway) and the Claude gateway IP
+# (already directly reachable -- routing it through this proxy too was not
+# tested and is unnecessary since it isn't blocked).
+
+[verifier]
+timeout_sec = 1800
+environment_mode = "separate"
+# Grading a smoke-scale candidate should be fast (tiny data, likely a partial
+# or degenerate Stage B), but Stage A/B timing has never been measured for
+# ANY checkpoint yet (AUTONOMOUS_RESEARCH_READY.md blocker B3) -- 30 min is a
+# guess, not a measurement, same caveat as the standard track's 3600s.
+
+[verifier.environment]
+docker_image = "mat-agent-harbor-verifier-smoke:latest"
+# A DIFFERENT tag from the standard track's mat-agent-harbor-verifier:latest
+# (both still built from the same Dockerfile.verifier, via a TESTS_SRC_DIR
+# build arg -- see environment/build.sh) -- confirmed via a real failed
+# smoke run ("bash: line 1: /tests/test.sh: No such file or directory")
+# that Harbor's separate-verifier-mode hardcodes skip_tests_upload=True
+# (harbor/trial/trial.py _run_separate_verifier), so tests/ is NEVER
+# uploaded at runtime in this mode -- it must already be baked into the
+# image at /tests, and this track's tests/test.sh genuinely differs from
+# the standard track's (different compute-policy ledger, writes
+# plumbing_status.json), so the two tracks cannot share one verifier image.
+workdir = "/workspace/mat-agent"
+# "no-network" (the original, tighter choice) triggers Harbor's own
+# egress-control sidecar (harbor.environments.docker.docker.py
+# _ensure_egress_control_sidecar_image_built), which this host cannot build:
+# it unconditionally uses `docker buildx` internally
+# (build_docker_image_with_buildx), and this host has no buildx plugin --
+# confirmed via a real failed run (RuntimeError: unknown flag: --file,
+# exit 125). "public" avoids that Harbor-internal dependency entirely. The
+# verifier still has no Volc credentials and the sequestered data is still
+# never reachable from the agent -- this only gives up the (already
+# secondary) defense of also blocking the verifier's own outbound network,
+# not the sequestered-data isolation itself. Revert to "no-network" once
+# buildx is available.
+network_mode = "public"

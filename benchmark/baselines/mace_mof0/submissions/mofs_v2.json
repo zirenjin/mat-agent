@@ -1,0 +1,7 @@
+{
+  "_comment": "Strongest human baseline. Scored by the frozen evaluator exactly like a candidate.",
+  "checkpoint": "data/mace_mof_0/models/mofs_v2.model",
+  "inference": {"kind": "mace_calculator", "dtype": "float64", "head": "pbe_d3"},
+  "training_recipe_entrypoint": "PUBLISHED:ddmms/data/mace-mof-0 ft_medium.yml (not re-run for baseline)",
+  "notes": "MACE-MP-MOF0 v2, published npj Comput Mater 11:125 (2025)."
+}

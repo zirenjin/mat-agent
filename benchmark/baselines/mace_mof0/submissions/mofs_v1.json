@@ -1,0 +1,7 @@
+{
+  "_comment": "Context arm: earlier published model. Not the binding baseline.",
+  "checkpoint": "data/mace_mof_0/models/mofs_v1.model",
+  "inference": {"kind": "mace_calculator", "dtype": "float64", "head": "default"},
+  "training_recipe_entrypoint": "PUBLISHED:ddmms/data/mace-mof-0 (v1)",
+  "notes": "MACE-MP-MOF0 v1."
+}

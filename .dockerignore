@@ -62,6 +62,38 @@ legacy_model_apis/
 mattertune/.git/
 mattertune/log.txt
 .venvs/
-# Large benchmark/source caches not needed by the Docker image
-benchmark/
 .cache/
+
+# NOTE: `benchmark/` used to be blanket-excluded here ("large benchmark/source
+# caches"), predating the current ~1MB benchmark/ scientific-protocol tree
+# (evaluator, scoring glue, task manifests). Its actual __pycache__ dirs are
+# already caught by the generic `__pycache__/` rule above; nothing else in
+# benchmark/ is large. benchmark/harbor/mace-mof0/environment/Dockerfile now
+# depends on `benchmark/` being visible in the build context.
+
+# data/ stays excluded by default (mounted at runtime via VePFS for the
+# existing docker/Dockerfile image) except what the two Harbor images under
+# benchmark/harbor/mace-mof0/environment/ need -- see those Dockerfiles'
+# COPY lists for exactly what and why (the agent image gets only the
+# dev-visible slice; Dockerfile.verifier additionally gets the full
+# discovery/ and raw/ trees, including the sequestered split, which must
+# NEVER reach the agent image). Docker requires each ancestor directory to
+# be re-included explicitly for a nested negation to take effect.
+!data/registry.yaml
+!data/mace_mof_0/
+!data/mace_mof_0/manifest.json
+!data/mace_mof_0/models/
+!data/mace_mof_0/models/**
+!data/mace_mof_0/raw/
+!data/mace_mof_0/raw/**
+!data/mace_mof_0/discovery/
+!data/mace_mof_0/discovery/**
+
+# Reproduced baseline+warm-start checkpoint for the Harbor discovery task
+# (benchmark/baselines/mace_mof0/reproduced_baseline_manifest.json) -- only
+# this one run's models/ dir, not the rest of data/mace_mof_0/runs/** (many
+# unrelated historical runs, large logs/checkpoints/downloads).
+!data/mace_mof_0/runs/
+!data/mace_mof_0/runs/mof0_paper_reproduce_force_mh_lr_20260829T124117Z/
+!data/mace_mof_0/runs/mof0_paper_reproduce_force_mh_lr_20260829T124117Z/models/
+!data/mace_mof_0/runs/mof0_paper_reproduce_force_mh_lr_20260829T124117Z/models/mof0_paper_reproduce.model

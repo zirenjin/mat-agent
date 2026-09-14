@@ -1,0 +1,48 @@
+{
+  "baseline_id": "mace_mof0_v2",
+  "task": "mace_mof0_discovery",
+  "role": "strongest_human_baseline",
+  "description": "Published MACE-MP-MOF0 v2 model. Native MACE multi-head fine-tune of MACE-MP-0b medium: pt_head (MP trajectory replay, 1000 structures, weight 1.0) + pbe_d3 (MOF PBE+D3). ~2500 epochs, loss weights energy:forces:stress = 1:10:100, float64, EMA 0.995, seed 2024.",
+  "paper": {
+    "title": "Machine learned potential for high-throughput phonon calculations of metal-organic frameworks",
+    "journal": "npj Computational Materials",
+    "volume_article": "11, Article 125",
+    "year": 2025,
+    "doi": "10.1038/s41524-025-01611-8"
+  },
+  "artifacts": {
+    "checkpoint": "data/mace_mof_0/models/mofs_v2.model",
+    "checkpoint_sha256": "04113c54cb5f8e1f30babbbda12cd97df401a65c1424f24c4cf1bcce247f12db",
+    "foundation": "data/mace_mof_0/models/mace_agnesi_medium.model",
+    "foundation_source": "https://github.com/ACEsuit/mace-foundations/releases/download/mace_mp_0b/mace_agnesi_medium.model",
+    "training_config": "data/mace_mof_0/raw/data_training/ft_medium.yml",
+    "expected_heads": ["pt_head", "pbe_d3"]
+  },
+  "also_scored_for_context": {
+    "mofs_v1": "data/mace_mof_0/models/mofs_v1.model",
+    "foundation_zero_shot": "data/mace_mof_0/models/mace_agnesi_medium.model"
+  },
+  "published_reference_numbers": {
+    "note": "From the reproduction task card; released test split, native MACE eval code. Context only — the binding baseline is baseline_scores.json produced by benchmark/evaluation/evaluate_mof0.py.",
+    "mofs_v2_released_test_split": {
+      "energy_rmse_meV_per_atom": 1.38,
+      "force_rmse_meV_per_A": 14.15,
+      "stress_rmse_meV_per_A3": 0.184
+    }
+  },
+  "baseline_scorecard": "benchmark/baselines/mace_mof0/baseline_scores.json",
+  "baseline_scorecard_status": "NOT_YET_GENERATED -- run benchmark/baselines/mace_mof0/run_baseline.sh inside the evaluation Docker image on GPU. It scores foundation / mofs_v1 / mofs_v2 with the frozen evaluator, copies the mofs_v2 scorecard to baseline_scores.json, writes baseline_context.json, and produces benchmark/evaluation/noise_estimate.json. Then: python benchmark/integrity/verify_frozen.py --update && commit.",
+  "run_script": "benchmark/baselines/mace_mof0/run_baseline.sh",
+  "submission_descriptors": {
+    "binding": "benchmark/baselines/mace_mof0/submissions/mofs_v2.json",
+    "context": [
+      "benchmark/baselines/mace_mof0/submissions/mofs_v1.json",
+      "benchmark/baselines/mace_mof0/submissions/foundation.json"
+    ]
+  },
+  "provenance_rules": [
+    "The binding baseline is the scorecard this repo generates with the frozen evaluator, not the paper's printed numbers.",
+    "If the evaluator changes, baseline_scores.json is regenerated in the same commit and the frozen manifest is updated.",
+    "Candidate and baseline are always scored by the same evaluator_rev."
+  ]
+}

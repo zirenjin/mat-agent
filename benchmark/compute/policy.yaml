@@ -1,0 +1,115 @@
+api_version: 1
+policy_kind: compute_policy
+
+# Compute is constrained so that a submission cannot "beat" the human baseline by
+# spending vastly more compute or by scaling the model far past the baseline.
+# It is NOT meant to constrain scientific creativity: any method that fits the
+# budget is allowed.
+
+common:
+  # The reference hardware. Budgets below are expressed in A100-GPU-hours.
+  # Runs on other GPUs are converted by the factor in gpu_equivalence.
+  reference_gpu: "A100-40GB"
+  gpu_equivalence:            # multiply measured GPU-hours by this to get A100-equivalent
+    A100-40GB: 1.0
+    A100-80GB: 1.15
+    H100: 2.0
+    V100: 0.45
+    RTX4090: 0.5
+    other: 1.0               # must be justified in the run manifest
+
+  run_manifest:
+    # Every train.sh / inference.sh / custom training run writes this file.
+    path: "runs/<run_id>/run_manifest.json"
+    required_fields:
+      - run_id
+      - kind                  # train | infer | eval-proxy | other
+      - started_utc
+      - ended_utc
+      - gpu_model
+      - gpu_count
+      - measured_gpu_seconds  # wall_seconds * gpu_count, from the process, not estimated
+      - resolved_config_path  # the exact config/argv used
+      - foundation_checkpoint_sha256
+      - code_rev              # git rev of workspace/, or a content hash if uncommitted
+      - param_count           # total trainable parameters of the model
+    notes: "measured_gpu_seconds must come from real timing. Splitting one logical experiment across manifests to dodge per_experiment_a100_hours is an R5 violation."
+
+tasks:
+  mace_mof0_discovery:
+    # Standard track budget -- TBD/PROPOSED, NOT calibrated. Kept at the
+    # figures from the pre-warm-start design (superseding the earlier
+    # 400 / 96 / 12M / 12 provisional numbers referenced in older docs/notes)
+    # only as placeholders, not preserved out of false consistency: the one
+    # real data point we have is that a FULL reproduction (2504 epochs, 4
+    # GPUs, mof0_paper_reproduce_force_mh_lr_20260829T124117Z) took ~31.7h
+    # wall-clock, i.e. ~127 GPU-hours on its own -- more than this entire
+    # total_a100_hours figure. That run is no longer what a standard-track
+    # experiment needs to repeat (agents warm-start from its checkpoint
+    # instead, see reproduced_baseline_manifest.json), but we have not yet
+    # measured what a meaningful *adaptation* run from that warm start costs,
+    # so calibrate total_a100_hours/per_experiment_a100_hours/
+    # max_wall_hours_per_run from real warm-start fine-tune timing before
+    # treating a standard-track (non-smoke) attempt as properly budgeted.
+    # See benchmark/harbor/mace-mof0/task.toml for the separate, non-scientific
+    # agent wall-clock ceiling (Harbor [agent].timeout_sec = 57600s = 16h) that
+    # bounds *all* iterations combined; it is not a compute-policy field and is
+    # not enforced by account_compute.py.
+    total_a100_hours: 50           # TBD -- whole-task research budget across all iterations
+    per_experiment_a100_hours: 12  # TBD -- soft cap; a single run above this needs a one-line justification and still counts
+    max_param_count: 9_000_000     # ~2x the MACE-MP-0b medium foundation; larger models are out of contract
+    max_wall_hours_per_run: 12     # a single run must also fit inside the 16h agent wall-clock ceiling
+    max_concurrent_a100_equivalent_gpus: 4
+    # Enforced live (not just documented) at submission time by
+    # tools/remote_job.py submit, which refuses a new job if the sum of
+    # gpu_count over still-non-terminal jobs it has submitted would exceed
+    # this figure. account_compute.py cannot enforce this: it only reads
+    # completed run_manifest.json files after the fact, and concurrency is a
+    # live-state property, not a retrospective ledger sum.
+    scored_evaluations:
+      # Evaluations that touch sequestered endpoints and produce a reportable scorecard.
+      budget: 3
+      note: >-
+        Self-evaluation on dev_eval.xyz is unlimited and does not count. The
+        final Harbor-triggered verifier run (benchmark/harbor/mace-mof0/tests/test.sh
+        scoring runs/SUBMISSION/submission.json) consumes one of these 3 --
+        spend the other 2 deliberately on candidates you already believe in.
+    verifier_compute_excluded: true
+    verifier_compute_note: >-
+      Compute spent by the frozen evaluator itself (Stage A/B relax + phonopy
+      runs invoked from benchmark/harbor/mace-mof0/tests/test.sh) is grading
+      infrastructure, not agent research, and does not count against
+      total_a100_hours. It has no run_manifest.json and account_compute.py
+      never sees it.
+    reporting:
+      # The evaluator always reports these efficiency views next to the raw score.
+      - "score_at_baseline_compute"   # candidate score if trained only for the baseline's A100-hours
+      - "score_per_a100_hour"
+      - "total_a100_hours_used"
+
+  mace_mof0_discovery_smoke:
+    # Separate track for validating the autonomous-research PLUMBING (Harbor
+    # + compute broker + remote_job.py + verifier), not for scientific
+    # results. Does not replace or weaken mace_mof0_discovery above -- a
+    # smoke run's ledger is entirely separate (different --task key, so
+    # account_compute.py and tools/remote_job.py's concurrency gate track it
+    # independently). See benchmark/harbor/mace-mof0-smoke/ for the matching
+    # Harbor task (shorter agent timeout, non-gating scientific expectations).
+    total_a100_hours: 2
+    per_experiment_a100_hours: 1.5
+    max_param_count: 9_000_000          # same cap as standard track -- no reason to relax it for smoke
+    max_wall_hours_per_run: 1.5
+    max_concurrent_a100_equivalent_gpus: 1
+    scored_evaluations:
+      budget: 1
+      note: >-
+        Exactly one final verifier invocation. Scientific improvement
+        (beats_baseline / scientific_score) is explicitly NON-GATING for
+        smoke -- record it, don't judge plumbing success by it. Plumbing
+        success is judged by the separate checklist in
+        benchmark/harbor/mace-mof0-smoke/README.md, not by this scorecard.
+    verifier_compute_excluded: true
+    reporting:
+      - "score_at_baseline_compute"
+      - "score_per_a100_hour"
+      - "total_a100_hours_used"

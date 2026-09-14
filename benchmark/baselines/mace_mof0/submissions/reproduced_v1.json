@@ -1,0 +1,7 @@
+{
+  "_comment": "This repo's own reproduction of the MACE-MP-MOF0 v2 recipe -- see ../reproduced_baseline_manifest.json for full provenance (checkpoint/config SHA256, reproduced-vs-published metrics). Scored by the frozen evaluator exactly like a candidate, via `evaluate_mof0.py score --baseline`.",
+  "checkpoint": "data/mace_mof_0/runs/mof0_paper_reproduce_force_mh_lr_20260829T124117Z/models/mof0_paper_reproduce.model",
+  "inference": {"kind": "mace_calculator", "dtype": "float64", "head": "pbe_d3"},
+  "training_recipe_entrypoint": "data/mace_mof_0/runs/mof0_paper_reproduce_force_mh_lr_20260829T124117Z/configs/ft_medium.mof0_paper_reproduce.yml (native mace.cli.run_train --force_mh_ft_lr=True; see training_command.sh in that run dir)",
+  "notes": "Run mof0_paper_reproduce_force_mh_lr_20260829T124117Z, training exitcode 0. Reproduced test-set force RMSE (10.39 meV/A) is better than the published v2 checkpoint (14.15 meV/A) on the same released test.xyz; energy metrics are comparable. This is the frozen baseline AND warm-start checkpoint for the mace_mof0_discovery Harbor task -- see reproduced_baseline_manifest.json's warm_start_contract."
+}

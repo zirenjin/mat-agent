@@ -1,0 +1,56 @@
+# Separate verifier environment -- see task.toml [verifier.environment].
+# Unlike environment/Dockerfile (the agent image), this DOES include the
+# sequestered split, because scoring needs it. It gets no volc CLI and no
+# credentials (task.toml sets [verifier].network_mode = "no-network" and
+# leaves [verifier].env empty): the verifier never needs to reach Volcengine,
+# it only reads local files and runs the frozen evaluator.
+#
+# TESTS_SRC_DIR must be baked in at /tests -- confirmed by reading harbor==
+# 0.23.0's own source (harbor/trial/trial.py's _run_separate_verifier always
+# passes skip_tests_upload=True to the verifier, and
+# harbor/verifier/verifier.py's _resolve_tests then returns
+# self.task.paths.test_path_for(...) i.e. an expected-preexisting /tests/
+# test.sh, never uploading tests/ at runtime) whenever [verifier].
+# environment_mode = "separate" -- unlike the "shared" mode, which does
+# upload tests/ at runtime and would not need this. Confirmed by an actual
+# failed smoke run: "bash: line 1: /tests/test.sh: No such file or
+# directory" when this image had no /tests at all. The standard and smoke
+# tracks have genuinely different tests/test.sh (different compute-policy
+# ledger, smoke also writes plumbing_status.json), so they cannot share one
+# baked-in /tests -- hence this ARG rather than a hardcoded COPY, and two
+# separate image tags built from it (see environment/build.sh).
+#
+# Build (from repo root, via environment/build.sh):
+#   docker build -f benchmark/harbor/mace-mof0/environment/Dockerfile.verifier \
+#       --build-arg TESTS_SRC_DIR=benchmark/harbor/mace-mof0/tests \
+#       -t mat-agent-harbor-verifier:"$(git rev-parse --short HEAD)" \
+#       -t mat-agent-harbor-verifier:latest .
+FROM mat-agent:full
+
+ARG GIT_SHA=unknown
+ENV MAT_AGENT_ROOT=/workspace/mat-agent \
+    GIT_SHA=${GIT_SHA}
+WORKDIR ${MAT_AGENT_ROOT}
+
+COPY benchmark/ ${MAT_AGENT_ROOT}/benchmark/
+COPY tasks/ ${MAT_AGENT_ROOT}/tasks/
+COPY data/registry.yaml ${MAT_AGENT_ROOT}/data/registry.yaml
+COPY data/mace_mof_0/manifest.json ${MAT_AGENT_ROOT}/data/mace_mof_0/manifest.json
+COPY data/mace_mof_0/models/ ${MAT_AGENT_ROOT}/data/mace_mof_0/models/
+COPY data/mace_mof_0/raw/ ${MAT_AGENT_ROOT}/data/mace_mof_0/raw/
+COPY data/mace_mof_0/discovery/ ${MAT_AGENT_ROOT}/data/mace_mof_0/discovery/
+# The one place this Dockerfile deliberately differs from the agent's: the
+# line above includes discovery/_sequestered/ and raw/phonons/ in full. Fix
+# permissions again after COPY -- Docker COPY does not reliably preserve
+# restrictive source modes across build contexts/platforms.
+RUN chmod 400 data/mace_mof_0/discovery/_sequestered/*.xyz \
+              data/mace_mof_0/discovery/_sequestered/*.json 2>/dev/null || true
+
+RUN mkdir -p ${MAT_AGENT_ROOT}/runs
+
+# Baked in at Harbor's fixed, non-configurable path -- see header comment.
+ARG TESTS_SRC_DIR=benchmark/harbor/mace-mof0/tests
+COPY ${TESTS_SRC_DIR}/ /tests/
+RUN chmod +x /tests/test.sh
+
+CMD ["/bin/bash"]

@@ -1,0 +1,7 @@
+{
+  "_comment": "Context arm: untuned foundation (MACE-MP-0b medium). Lower bound.",
+  "checkpoint": "data/mace_mof_0/models/mace_agnesi_medium.model",
+  "inference": {"kind": "mace_calculator", "dtype": "float64"},
+  "training_recipe_entrypoint": "PUBLISHED:ACEsuit/mace-foundations mace_mp_0b",
+  "notes": "MACE-MP-0b medium, no MOF fine-tuning."
+}

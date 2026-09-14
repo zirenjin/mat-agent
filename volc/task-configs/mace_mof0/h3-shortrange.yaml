@@ -1,0 +1,76 @@
+TaskName: mof0_h3_shortrange
+Description: 'H3 (architecture): a small (~37k param) 1-layer equivariant MACE
+  short-range head (r_max 5 A) on the FROZEN foundation, fit to the foundation
+  force residual (F_DFT - F_MACE) using H2''s residual cache. Then proxy-eval
+  foundation vs +SR vs +SR+LR (H2 head) on dev_eval E/F/stress + phonon proxy.
+  Complements H2 (energy) by targeting the force/curvature residual. 1 GPU.'
+Tags:
+- mace-mof0
+- h3-architecture
+- short-range-head
+- runtime-bootstrap
+Entrypoint: 'cd /GenSIvePFS/users/public/mat-agent
+
+  bash volc/scripts/run_h3_shortrange.sh'
+Envs:
+- Name: MACE_MOF0_ROOT
+  Value: /GenSIvePFS/users/public/mat-agent
+  IsPrivate: false
+- Name: H3_STEPS
+  Value: '800'
+  IsPrivate: false
+- Name: H3_BATCH
+  Value: '4'
+  IsPrivate: false
+- Name: TORCH_FORCE_NO_WEIGHTS_ONLY_LOAD
+  Value: '1'
+  IsPrivate: false
+- Name: PYTHONUNBUFFERED
+  Value: '1'
+  IsPrivate: false
+ImageUrl: gensi-cn-beijing.cr.volces.com/ai4science/mlip_agent:v1
+ResourceQueueName: sia-thu
+Framework: PyTorchDDP
+TaskRoleSpecs:
+- RoleName: worker
+  RoleReplicas: 1
+  Flavor: ml.pni2.3xlarge
+ActiveDeadlineSeconds: 86400
+DelayExitTimeSeconds: 0
+EnableTensorBoard: true
+Storages:
+- Type: TosFuse
+  MountPath: /sia-thu
+  Bucket: sia-thu
+  Prefix: /
+- Type: Vepfs
+  MountPath: /GenSIvePFS/users/model
+  ReadOnly: false
+  SubPath: users/model
+  VepfsId: vepfs-cnbj5912665bc1be
+- Type: Vepfs
+  MountPath: /GenSIvePFS/users/public/mat-agent
+  ReadOnly: false
+  SubPath: users/public/mat-agent
+  VepfsId: vepfs-cnbj5912665bc1be
+TensorBoardStorage:
+  Type: Vepfs
+  MountPath: /tensorboard_logs
+  ReadOnly: false
+  SubPath: users/public/mat-agent/tensorboard_logs
+  VepfsId: vepfs-cnbj5912665bc1be
+AccessType: Public
+Preemptible: false
+Priority: 4
+RetryOptions:
+  EnableRetry: false
+  EnableReserveResourceOnRetry: false
+DiagOptions:
+- Name: EnvironmentalDiagnosis
+  Enable: false
+- Name: PythonDetection
+  Enable: false
+- Name: LogDetection
+  Enable: false
+- Name: VecclHangDetection
+  Enable: false

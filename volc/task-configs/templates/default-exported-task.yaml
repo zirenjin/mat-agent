@@ -1,0 +1,78 @@
+# Derived from mat-agent workspace exported task config for rl_recipe_8b_code.
+# Runtime-only metadata was removed. Fill the placeholders before submit.
+
+Name: "<task-name>"
+Description: ""
+ImageSpec:
+  Type: Preset
+  Url: vemlp-cn-beijing.cr.volces.com/preset-images/cuda:12.8.1-py3.12-ubuntu22.04
+EntrypointPath: |-
+  source /GenSIvePFS/users/public/mat-agent/miniconda3/etc/profile.d/conda.sh
+  conda activate <env-name>
+
+  cd /GenSIvePFS/users/public/mat-agent
+  bash <script>.sh
+ResourceQueueId: q-20250929101814-vmcz2
+ResourceQueueName: sia-thu
+EnableTensorBoard: true
+Args: ""
+Framework: PyTorchDDP
+ActiveDeadlineSeconds: 864000
+DelayExitTimeSeconds: 0
+TaskRoleSpecs:
+  - RoleName: worker
+    RoleReplicas: 1
+    ResourceSpecId: ml.hpcpni2.28xlarge
+    RoleRestartPolicy: Never
+    RoleRestartMaxRetryCount: 0
+Storages:
+  - Type: TosFuse
+    MountPath: /sia-thu
+    Bucket: sia-thu
+    Prefix: /
+  - Type: Vepfs
+    MountPath: /GenSIvePFS/users/model
+    VepfsName: GenSIvePFS
+    ReadOnly: false
+    SubPath: users/model
+    VepfsId: vepfs-cnbj5912665bc1be
+    VepfsHostPath: /mnt/vepfs-cnbj5912665bc1be
+  - Type: Vepfs
+    MountPath: /GenSIvePFS/users/public/mat-agent
+    VepfsName: GenSIvePFS
+    ReadOnly: false
+    SubPath: users/public/mat-agent
+    VepfsId: vepfs-cnbj5912665bc1be
+    VepfsHostPath: /mnt/vepfs-cnbj5912665bc1be
+TensorBoardPath: ""
+Preemptible: false
+Priority: 4
+TensorBoardStorage:
+  Type: Vepfs
+  MountPath: /tensorboard_logs
+  VepfsName: GenSIvePFS
+  ReadOnly: false
+  SubPath: users/public/mat-agent/tensorboard_logs
+  VepfsId: vepfs-cnbj5912665bc1be
+  VepfsHostPath: /mnt/vepfs-cnbj5912665bc1be
+AccessTypes:
+  - Public
+CacheType: Cloudfs
+ProjectName: default
+RetryOptions:
+  EnableRetry: false
+  EnableReserveResourceOnRetry: false
+DiagOptions:
+  - Name: EnvironmentalDiagnosis
+    Enable: false
+  - Name: PythonDetection
+    Enable: false
+  - Name: LogDetection
+    Enable: false
+  - Name: VecclHangDetection
+    Enable: false
+TaskResourceType: resource_queue
+WorkloadNetworkMode: DualNIC
+Credential:
+  UseServiceLinkedRole: true
+UseSuspectedNode: false

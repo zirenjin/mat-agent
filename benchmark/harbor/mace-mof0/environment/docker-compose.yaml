@@ -1,0 +1,78 @@
+# Task-authored compose overlay (Harbor's "Option 2: task with extra
+# services" -- confirmed from harbor.environments.docker.docker.py's
+# `_docker_compose_paths`, which merges this file on top of the generated
+# base `main` service). Two things happen here:
+#
+# 1. `main` (the agent) gets a bind mount of the host repo's `runs/` into
+#    the same path it already expects it at, so a Volc job's
+#    runs/<run_id>/run_manifest.json and checkpoint -- written by a real GPU
+#    node onto the same VePFS mount this repo lives on -- actually appear
+#    inside the agent's own container. This only works because this task
+#    currently only ever runs on this dev machine's own local Docker, where
+#    that host path exists; a cloud sandbox backend (Modal/Daytona/etc, see
+#    benchmark/harbor/README.md) would need a different mechanism (object
+#    storage), which is exactly why Harbor task review generally steers
+#    tasks away from relying on host bind mounts for portability -- accepted
+#    here as a deliberate, documented trade-off for a local-only setup.
+# 2. A `broker` service is added: the only place in this task that gets Volc
+#    credentials or the `volc` CLI (see broker/server.py). `main` reaches it
+#    over the compose network at `http://broker:8765` -- REMOTE_JOB_BROKER_URL
+#    below -- and never gets credentials of its own, so it cannot bypass the
+#    concurrency/budget gate by shelling out to `volc` directly.
+# Both services mount `workspace/` (not just `runs/`): a submit config the
+# agent authors or edits must live somewhere the broker's own, separate
+# filesystem can also see, since only these two bind-mounted directories are
+# shared -- volc/task-configs/ baked into the agent's own image is NOT
+# visible from inside `broker`. instruction.md tells the agent to put any
+# config it wants to submit (a copy of a template, or a new one) under
+# workspace/ before calling `remote_job.py submit`.
+# playground/loop_db/ is ALSO bind-mounted (not just collected as a Harbor
+# artifact at trial end): tools/remote_job.py's concurrency/budget ledger
+# (the `remote_jobs` sqlite table `broker` writes to) needs to survive a
+# `broker` container restart mid-trial, not just exist by the time the trial
+# ends -- a ledger that only Harbor's post-hoc artifact mechanism preserves
+# would be silently empty for the whole rest of a trial after any restart.
+services:
+  main:
+    volumes:
+      - ../../../../runs:/workspace/mat-agent/runs
+      - ../../../../workspace:/workspace/mat-agent/workspace
+      - ../../../../playground/loop_db:/workspace/mat-agent/playground/loop_db
+    environment:
+      - REMOTE_JOB_BROKER_URL=http://broker:8765
+    extra_hosts:
+      # See the identical field in the smoke track's docker-compose.yaml for
+      # the full explanation -- this host's api.openai.com/chatgpt.com
+      # egress requires routing through this host's own local proxy, whose
+      # only container-reachable address is via Docker's portable
+      # "host-gateway" special value (Docker >=20.10), not a hardcoded IP
+      # (this host's real proxy is only bound to 127.0.0.1 and Harbor's own
+      # compose network's bridge gateway IP differs per run).
+      - "host-gateway:host-gateway"
+
+  broker:
+    build:
+      # Points at the STAGED context (environment/stage_context.sh), not the
+      # real repo root -- see build.sh and that script's header comment for
+      # why: repo root is ~789GB and hangs this host's legacy-builder-only
+      # Docker regardless of .dockerignore. build.sh refreshes this
+      # directory (hardlinks, ~1s) before you run `harbor run`; the
+      # Dockerfile path below is relative to it, mirroring the same layout.
+      context: ${MAT_AGENT_BUILD_STAGE_DIR:-/GenSIvePFS/users/public/mat-agent-harbor-buildctx}
+      dockerfile: benchmark/harbor/mace-mof0/environment/broker/Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+    pull_policy: build
+    volumes:
+      - ../../../../runs:/workspace/mat-agent/runs
+      - ../../../../workspace:/workspace/mat-agent/workspace
+      - ../../../../playground/loop_db:/workspace/mat-agent/playground/loop_db
+    environment:
+      # Native Docker Compose ${VAR} interpolation from the HOST shell that
+      # invokes `harbor run` -- NOT Harbor's own [environment].env mechanism.
+      # Populated by export_volc_env.sh; never written to disk, never baked
+      # into an image layer.
+      - VOLC_CREDENTIALS_B64=${VOLC_CREDENTIALS_B64}
+      - VOLC_CONFIG_B64=${VOLC_CONFIG_B64}
+      - VOLC_ACCESS_TOKEN_B64=${VOLC_ACCESS_TOKEN_B64}
+    command: ["python3", "/workspace/mat-agent/broker_server.py", "--port", "8765"]

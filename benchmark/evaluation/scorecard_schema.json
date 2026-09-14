@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "mace_mof0_discovery scorecard",
+  "type": "object",
+  "required": ["schema_version", "subject", "evaluator_rev", "stage_a", "stage_b", "verdict"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "subject": {
+      "type": "object",
+      "required": ["label", "checkpoint_sha256"],
+      "properties": {
+        "label": {"type": "string"},
+        "checkpoint_sha256": {"type": "string"},
+        "is_baseline": {"type": "boolean"}
+      }
+    },
+    "evaluator_rev": {"type": "string"},
+    "protocol_constants": {"type": "object"},
+    "stage_a": {
+      "type": "object",
+      "description": "Sequestered-ML holdout, grouped by framework family.",
+      "required": ["overall", "by_framework"],
+      "properties": {
+        "overall": {
+          "type": "object",
+          "properties": {
+            "energy_rmse_meV_per_atom": {"type": "number"},
+            "energy_mae_meV_per_atom": {"type": "number"},
+            "force_rmse_meV_per_A": {"type": "number"},
+            "force_mae_meV_per_A": {"type": "number"},
+            "stress_rmse_meV_per_A3": {"type": "number"},
+            "stress_mae_meV_per_A3": {"type": "number"}
+          }
+        },
+        "by_framework": {"type": "object"}
+      }
+    },
+    "stage_b": {
+      "type": "object",
+      "description": "Per-MOF phonon lattice-dynamics endpoints and aggregate.",
+      "patternProperties": {
+        "^(MOF-5|UiO-66|MOF-74|MIL-53)$": {
+          "type": "object",
+          "properties": {
+            "endpoints": {
+              "type": "object",
+              "properties": {
+                "phonon_dos_mae": {"type": ["number", "null"]},
+                "phonon_frequency_rmse": {"type": ["number", "null"]},
+                "imaginary_mode_count": {"type": ["number", "null"]},
+                "unit_cell_length_percent_error": {"type": ["number", "null"]},
+                "space_group_match": {"type": ["boolean", "null"]},
+                "bulk_modulus_relative_error": {"type": ["number", "null"]},
+                "thermal_expansion_relative_error": {"type": ["number", "null"]}
+              }
+            },
+            "endpoint_ratio_vs_baseline": {"type": "object"},
+            "aggregate_ratio": {"type": ["number", "null"]},
+            "status": {"enum": ["better", "equal", "worse", "incomplete"]}
+          }
+        }
+      }
+    },
+    "compute": {
+      "type": "object",
+      "properties": {
+        "total_a100_hours_used": {"type": "number"},
+        "score_per_a100_hour": {"type": ["number", "null"]},
+        "score_at_baseline_compute": {"type": ["number", "null"]},
+        "ledger_ok": {"type": "boolean"}
+      }
+    },
+    "reproducibility": {
+      "type": "object",
+      "properties": {
+        "checked": {"type": "boolean"},
+        "max_relative_drift": {"type": ["number", "null"]},
+        "within_tolerance": {"type": ["boolean", "null"]}
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "required": ["beats_baseline", "reasons"],
+      "properties": {
+        "beats_baseline": {"type": "boolean"},
+        "tier": {"enum": ["methodological", "tuning", "not_a_win", "unverified"]},
+        "reasons": {"type": "array", "items": {"type": "string"}}
+      }
+    }
+  }
+}

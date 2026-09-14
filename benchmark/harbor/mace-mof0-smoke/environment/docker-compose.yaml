@@ -1,0 +1,61 @@
+# Smoke track's compose overlay. Deliberately reuses the STANDARD track's
+# broker Dockerfile and vendored volc CLI (benchmark/harbor/mace-mof0/environment/
+# broker/, .volc-bin/) rather than duplicating them -- there is nothing
+# smoke-specific about the broker's code, only which compute-policy task key
+# a submission is gated against, which is a runtime env var
+# (REMOTE_JOB_DEFAULT_TASK), not a build-time difference. Build via
+# benchmark/harbor/mace-mof0/environment/build.sh (there is no separate
+# build.sh for this track); it also vendors the volc CLI this compose file's
+# broker build needs.
+#
+# See benchmark/harbor/mace-mof0/environment/docker-compose.yaml for the
+# fuller explanation of why these bind mounts and this broker service exist
+# at all -- identical reasoning, just a second, separate compute-policy
+# ledger (mace_mof0_discovery_smoke) so a smoke run's bookkeeping can never
+# collide with or consume the standard track's budget.
+services:
+  main:
+    volumes:
+      - ../../../../runs:/workspace/mat-agent/runs
+      - ../../../../workspace:/workspace/mat-agent/workspace
+      - ../../../../playground/loop_db:/workspace/mat-agent/playground/loop_db
+    environment:
+      - REMOTE_JOB_BROKER_URL=http://broker:8765
+    extra_hosts:
+      # Lets task.toml's HTTPS_PROXY/ALL_PROXY point at this host's local
+      # egress proxy (127.0.0.1:1080/3128 on the HOST -- not reachable from
+      # inside a container as "127.0.0.1", and Harbor's own compose network's
+      # bridge gateway IP differs per run, so a fixed IP can't be hardcoded
+      # either). "host-gateway" is Docker's own portable special value
+      # (Docker >=20.10) that always resolves to whatever the real host
+      # gateway IP is for THIS container's network, confirmed working here:
+      # some outbound destinations (api.openai.com/chatgpt.com, needed for
+      # the Codex agent path) are unreachable directly from a container on
+      # this host even though the Claude gateway IP is -- see
+      # benchmark/harbor/README.md "Known blockers" for the full diagnosis
+      # (this is host/network-level, not Docker-image- or Harbor-specific).
+      - "host-gateway:host-gateway"
+
+  broker:
+    build:
+      context: ${MAT_AGENT_BUILD_STAGE_DIR:-/GenSIvePFS/users/public/mat-agent-harbor-buildctx}
+      dockerfile: benchmark/harbor/mace-mof0/environment/broker/Dockerfile
+      args:
+        GIT_SHA: ${GIT_SHA:-unknown}
+    pull_policy: build
+    volumes:
+      - ../../../../runs:/workspace/mat-agent/runs
+      - ../../../../workspace:/workspace/mat-agent/workspace
+      - ../../../../playground/loop_db:/workspace/mat-agent/playground/loop_db
+    environment:
+      - VOLC_CREDENTIALS_B64=${VOLC_CREDENTIALS_B64}
+      - VOLC_CONFIG_B64=${VOLC_CONFIG_B64}
+      - VOLC_ACCESS_TOKEN_B64=${VOLC_ACCESS_TOKEN_B64}
+      # The one real difference from the standard track's compose file: the
+      # broker (environment/broker/server.py, BROKER_TASK) FORCES every
+      # `submit` it handles onto the mace_mof0_discovery_smoke ledger,
+      # regardless of what --task the client (main) sent -- authoritative,
+      # not just a default, so a request cannot claim its way onto the
+      # standard track's looser 4-GPU cap from inside this environment.
+      - REMOTE_JOB_DEFAULT_TASK=mace_mof0_discovery_smoke
+    command: ["python3", "/workspace/mat-agent/broker_server.py", "--port", "8765"]

@@ -1,0 +1,69 @@
+{
+  "baseline_id": "mace_mof0_reproduced_v1",
+  "task": "mace_mof0_discovery",
+  "role": "frozen_baseline_and_warm_start",
+  "description": "This repo's own from-scratch reproduction of the MACE-MP-MOF0 v2 training recipe (native mace.cli.run_train, multi-head fine-tune of MACE-MP-0b medium: pt_head MP-trajectory replay [1000 structures, weight 1.0] + pbe_d3 MOF PBE+D3, 2504-epoch budget, loss weights energy:forces:stress = 1:10:100, float64, EMA 0.995, seed 2024, --force_mh_ft_lr=True). Superset supersedes benchmark/baselines/mace_mof0/manifest.json's mofs_v2 (the *published* weights) as the operative baseline+warm-start for the autonomous-discovery Harbor task specifically: an agent iterating on a checkpoint this repo's own pipeline produced is a stronger, more self-consistent starting point than one produced by an external, unreproducible training run. manifest.json / mofs_v2 are unchanged and remain the historical published-model record.",
+  "reproduction_run": {
+    "run_id": "mof0_paper_reproduce_force_mh_lr_20260829T124117Z",
+    "run_dir": "data/mace_mof_0/runs/mof0_paper_reproduce_force_mh_lr_20260829T124117Z",
+    "training_command": "python -m torch.distributed.run --standalone --nnodes=1 --nproc_per_node=4 -m mace.cli.run_train --config <configs/ft_medium.mof0_paper_reproduce.yml> --force_mh_ft_lr=True",
+    "training_exitcode": 0,
+    "image": "gensi-cn-beijing.cr.volces.com/ai4science/mlip_agent:v1",
+    "gpu": "4x (nproc_per_node=4), effective global batch size 48",
+    "git_context": "dirty working tree at run time (docker/Dockerfile, scoring/machine_learning/_common.py, scoring/physics/_common.py, scoring/physics/mace_mof_0/README.md, scoring/physics/mace_mof_0/imaginary_mode_count.py, tests/test_scoring_cli.py modified; see run_dir/preflight.md for the full git status snapshot). Nearest clean ancestor commit on main: 6df6f23 (\"Record MatterTune checkpoint loop result\"). Not a byte-exact reproducibility guarantee -- recorded honestly, not asserted as clean."
+  },
+  "artifacts": {
+    "checkpoint": "data/mace_mof_0/runs/mof0_paper_reproduce_force_mh_lr_20260829T124117Z/models/mof0_paper_reproduce.model",
+    "checkpoint_sha256": "4f0895eda40e0e96e26aec72c1d96ecdbd5afe0752c66bba442b523031417aac",
+    "checkpoint_compiled": "data/mace_mof_0/runs/mof0_paper_reproduce_force_mh_lr_20260829T124117Z/models/mof0_paper_reproduce_compiled.model",
+    "checkpoint_compiled_sha256": "6650d39e0b245223023778bfb820aed4d831c1aca679862d45f8b75630dc9cb0",
+    "training_config": "data/mace_mof_0/runs/mof0_paper_reproduce_force_mh_lr_20260829T124117Z/configs/ft_medium.mof0_paper_reproduce.yml",
+    "training_config_sha256": "408afa15685027990dd77c574938fc7bcc4183b3c274dabc135a8b2a6ceba8dc",
+    "foundation": "data/mace_mof_0/models/mace_agnesi_medium.model",
+    "expected_heads": ["pt_head", "pbe_d3"]
+  },
+  "model_identity": {
+    "architecture": "ScaleShiftMACE",
+    "multiheads_finetuning": true,
+    "foundation_model_readout": true,
+    "loss": "stress",
+    "energy_weight": 1.0,
+    "forces_weight": 10.0,
+    "stress_weight": 100.0,
+    "lr": 0.005,
+    "max_num_epochs": 2504,
+    "ema": true,
+    "ema_decay": 0.995,
+    "seed": 2024,
+    "default_dtype": "float64",
+    "pt_replay": {"enabled": true, "head": "pt_head", "num_samples_pt": 1000, "pt_train_file": "mp", "weight_pt_head": 1.0}
+  },
+  "dataset_split_identity": {
+    "train_file": "data/mace_mof_0/raw/data_training/train.xyz",
+    "valid_file": "data/mace_mof_0/raw/data_training/valid.xyz",
+    "test_file": "data/mace_mof_0/raw/data_training/test.xyz",
+    "note": "This is the RELEASED train/valid/test split -- the same one benchmark/data/build_discovery_splits.py partitions into dev_train/dev_eval/sequestered for the discovery task. Reproduction was checked apples-to-apples against this released split, not against dev_train/dev_eval."
+  },
+  "reproduced_baseline_metrics": {
+    "source": "data/mace_mof_0/runs/mof0_paper_reproduce_force_mh_lr_20260829T124117Z/results/apples_to_apples/{reproduced,published_v2}_test.metrics.json (native mace.cli.eval_configs, released test.xyz, head=pbe_d3, float64, compute_stress) -- NOT the frozen benchmark/evaluation/evaluate_mof0.py Stage A/B scorecard, which has never been run against any checkpoint yet (AUTONOMOUS_RESEARCH_READY.md blocker B1). Do not treat these as the binding discovery-task baseline_scores.json.",
+    "reproduced_vs_published_v2_test_ALL": {
+      "reproduced": {"mae_E_meV_per_atom": 0.9704, "rmse_E_meV_per_atom": 1.3461, "mae_F_meV_A": 5.077, "rmse_F_meV_A": 10.386, "mae_stress_meV_A3": 0.1028, "rmse_stress_meV_A3": 0.1715, "n_configs": 369},
+      "published_v2": {"mae_E_meV_per_atom": 0.9922, "rmse_E_meV_per_atom": 1.3813, "mae_F_meV_A": 6.106, "rmse_F_meV_A": 14.147, "mae_stress_meV_A3": 0.1012, "rmse_stress_meV_A3": 0.1840, "n_configs": 369}
+    },
+    "verdict": "Reproduction matches or slightly exceeds the published v2 checkpoint on every released-test-set ALL metric (notably force RMSE: 10.39 vs 14.15 meV/A) -- a genuine, working reproduction, not a degraded copy."
+  },
+  "warm_start_contract": {
+    "usable_by_agent": true,
+    "access": "read-only -- COPY'd into the Harbor agent image (benchmark/harbor/mace-mof0/environment/Dockerfile) at data/mace_mof_0/models/mof0_reproduced_baseline.model, chmod 444 after COPY. The agent may load it, clone its parameters into a new model, fine-tune it, freeze subsets, add adapters, etc. It may NOT overwrite this in-image path or otherwise present a mutated copy of it as if it were the original -- freshly trained/fine-tuned models belong under workspace/ or runs/.",
+    "not_the_only_valid_start": "task_card.md still fixes data/mace_mof_0/models/mace_agnesi_medium.model as the only pretrained *foundation* weight an agent may declare in training_recipe_entrypoint per the submission contract; this reproduced checkpoint is an ADDITIONAL, optional warm-start the agent may fine-tune further from, not a replacement for that rule. See tasks/mace_mof0_discovery/task_card.md SS2 as revised for this Harbor task."
+  },
+  "immutability_enforcement": {
+    "mechanism": ["docker image COPY (build-time snapshot, agent container writes to it do not persist or propagate)", "chmod 444 after COPY inside environment/Dockerfile", "benchmark/integrity/verify_frozen.py pins this file's own SHA256 plus this run's training_config SHA256 -- see FROZEN_GLOBS in that file"],
+    "honest_limitation": "Like the existing sequestered-file 0400 permission bit (AUTONOMOUS_RESEARCH_READY.md SS9), chmod 444 on a file owned by the container's root user is a defense-in-depth control, not an absolute one -- a root process in the same container can still chmod it back and overwrite it. What actually prevents a mutated copy from being scored as if it were this baseline is the submission contract (task_card.md / benchmark/evaluation/_lib/submission.py): a candidate's own checkpoint must live under runs/ or workspace/, and this file's checkpoint_sha256 lets anyone re-verify the in-image file was never altered."
+  },
+  "provenance_rules": [
+    "This descriptor's own SHA256, and the reproduction run's training_config SHA256, are part of benchmark/integrity/frozen_manifest.json -- editing either without running verify_frozen.py --update is out of contract for the agent (it is a maintainer-only action, same as every other frozen-file update in this repo).",
+    "The checkpoint and compiled-checkpoint files themselves are NOT globbed into frozen_manifest.json (they are large binaries under data/mace_mof_0/runs/, outside FROZEN_GLOBS' path patterns) -- checkpoint_sha256/checkpoint_compiled_sha256 above are the durable record of their content; re-hash and compare before trusting a checkout that may have touched data/mace_mof_0/runs/.",
+    "benchmark/baselines/mace_mof0/manifest.json (mofs_v2, the published model) is unrelated and unchanged by this file."
+  ]
+}

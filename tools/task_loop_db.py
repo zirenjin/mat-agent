@@ -7,16 +7,15 @@ import argparse
 import json
 import sqlite3
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
-
 
 DEFAULT_DB = Path("playground/loop_db/task_loops.sqlite")
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def current_commit() -> str | None:

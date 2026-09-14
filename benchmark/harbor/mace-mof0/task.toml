@@ -1,0 +1,136 @@
+# Harbor task definition for the MACE-MP-MOF0 Autonomous Discovery benchmark.
+#
+# Schema confirmed against the installed `harbor` package source (v0.23.0,
+# harbor/models/task/config.py), not guessed from documentation alone -- see
+# benchmark/harbor/README.md for what was and wasn't independently verified
+# in this repo's own environment.
+#
+# This file is frozen (benchmark/integrity/verify_frozen.py FROZEN_GLOBS
+# includes benchmark/**/*.toml) so the agent cannot quietly widen its own
+# budget or timeout.
+schema_version = "1.4"
+
+# TOML gotcha, worth the comment: this must stay above every `[section]`
+# header below. Once any table is open, a later bare `key = value` binds to
+# that table, not the root -- an earlier draft of this file had `artifacts`
+# after [solution] and it silently became (and was dropped from)
+# solution.artifacts instead of the real top-level field. Verified against
+# the installed harbor package's TaskConfig.model_validate_toml directly
+# (see benchmark/harbor/README.md) after this file mis-parsed exactly that
+# way on the first attempt.
+#
+# Collected from the agent's container onto the host after its trial ends,
+# then made available to the separate verifier environment (Harbor's
+# artifact mechanism -- harbor/models/task/config.py ArtifactConfig).
+artifacts = [
+    "/workspace/mat-agent/runs",
+    "/workspace/mat-agent/workspace",
+    "/workspace/mat-agent/playground/loop_db",
+]
+
+[task]
+name = "mat-agent/mace-mof0-discovery"
+version = "1"
+description = "MACE-MP-MOF0 autonomous MOF-potential discovery: beat the strongest published human baseline on MOF lattice dynamics under a fixed data/compute/evaluation contract. See tasks/mace_mof0_discovery/task_card.md."
+keywords = ["materials-science", "mlip", "mace", "autonomous-research"]
+
+[metadata]
+science_task_card = "tasks/mace_mof0_discovery/task_card.md"
+science_protocol = "benchmark/evaluation/protocol.md"
+compute_policy = "benchmark/compute/policy.yaml"
+
+# Agent wall-clock ceiling. 16h = 57600s (benchmark/compute/policy.yaml is
+# the source of truth for every *compute* figure; this is a real-time bound,
+# not a compute quantity, and account_compute.py neither reads nor enforces
+# it -- see that file's tasks.mace_mof0_discovery block).
+[agent]
+timeout_sec = 57600
+# user left at default (root) -- matches the base mat-agent:full image, which
+# has no USER directive either. Non-root execution was considered for
+# hidden-data defense-in-depth but is not required here since the sequestered
+# split is structurally absent from this image regardless of the running
+# user (see environment/Dockerfile's COPY allowlist).
+
+[environment]
+docker_image = "mat-agent-harbor:latest"
+# Built by environment/build.sh, which tags both :latest (what this file
+# references) and :<git-sha> (for provenance -- build.sh prints which SHA
+# :latest currently points to; check that before a run you intend to report).
+workdir = "/workspace/mat-agent"
+network_mode = "public"
+# This image (the `main` compose service) has neither the volc CLI nor Volc
+# credentials -- see environment/Dockerfile's header comment. Volc access
+# goes through a separate `broker` service instead, added by
+# environment/docker-compose.yaml (Harbor's task-authored compose overlay,
+# "Option 2: task with extra services" -- confirmed from
+# harbor.environments.docker.docker.py). `main` reaches it at
+# http://broker:8765 over the compose network (REMOTE_JOB_BROKER_URL, set in
+# that same compose file); `broker` is the only service that ever receives
+# VOLC_CREDENTIALS_B64/VOLC_CONFIG_B64/VOLC_ACCESS_TOKEN_B64, via that
+# compose file's native ${VAR} interpolation from the host shell, not
+# through this [environment].env. This is a real access-control boundary,
+# not just a documented convention: `main` has nothing to shell out to even
+# if an agent tried to bypass tools/remote_job.py's concurrency/budget gate.
+env = { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1", HTTPS_PROXY = "socks5h://host-gateway:1080", HTTP_PROXY = "socks5h://host-gateway:1080", ALL_PROXY = "socks5h://host-gateway:1080", NO_PROXY = "localhost,127.0.0.1,broker,14.103.213.146" }
+# CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: needed whenever ANTHROPIC_BASE_URL
+# points at a third-party/proxy endpoint (see benchmark/harbor/README.md
+# "Known blockers" and the smoke task.toml's identical field): without it,
+# Claude Code's own client-side GET /v1/models/{id} pre-flight check fails
+# against gateways that only implement the OpenAI-style GET /v1/models
+# list, and the whole session fails with "There's an issue with the
+# selected model" even though the real POST /v1/messages call works fine --
+# confirmed by testing directly.
+#
+# *_PROXY / NO_PROXY: see the smoke task.toml's identical field for the
+# full explanation -- required for the Codex agent path (api.openai.com/
+# chatgpt.com unreachable directly from a container on this host), routed
+# through this host's own local SOCKS5 proxy via the "host-gateway" special
+# hostname (environment/docker-compose.yaml `extra_hosts`), confirmed
+# working end-to-end with a real `codex exec`. NO_PROXY excludes the broker
+# and the already-directly-reachable Claude gateway IP.
+
+# The verifier runs in its OWN environment, separate from the agent's, so
+# that the sequestered split (which the agent's image structurally excludes)
+# is available for scoring without ever being reachable from the agent.
+# environment_mode is implied "separate" by setting [verifier.environment]
+# below (see VerifierConfig in harbor/models/task/config.py); left explicit
+# anyway so a future edit that removes the environment block fails loudly
+# instead of silently falling back to "shared".
+[verifier]
+timeout_sec = 3600
+environment_mode = "separate"
+# Grading (Stage A/B: relax, phonopy, EOS scan across 4 MOFs) is expected to
+# take meaningfully longer than Harbor's 600s default; 1h is a starting
+# estimate pending a real timing run (AUTONOMOUS_RESEARCH_READY.md blocker
+# B3 -- Stage-B has never been executed against real MACE + phonopy in this
+# repo as of this writing). Revise once B1-B3 are done.
+
+[verifier.environment]
+docker_image = "mat-agent-harbor-verifier:latest"
+# A SEPARATE image from the agent's -- see environment/build.sh (build_verifier
+# stage) and environment/Dockerfile.verifier. This one DOES include
+# data/mace_mof_0/discovery/_sequestered/** and data/mace_mof_0/raw/phonons/**;
+# the agent's image never does. It gets no Volc credentials (env is empty).
+workdir = "/workspace/mat-agent"
+# "no-network" was the original, tighter choice but is not usable on a host
+# without `docker buildx`: it triggers Harbor's own egress-control sidecar
+# (harbor.environments.docker.docker.py's
+# _ensure_egress_control_sidecar_image_built), which unconditionally shells
+# out to `docker buildx build` internally regardless of this repo's own
+# legacy-builder-only setup -- confirmed via a real failed smoke run
+# (RuntimeError: unknown flag: --file, exit 125) on the smoke track's
+# identical setting, before this file's own field was ever exercised.
+# "public" avoids that Harbor-internal dependency; the verifier still gets
+# no Volc credentials and sequestered data is still never reachable from the
+# agent, so the actual hidden-data isolation this comment used to describe
+# is unaffected -- only the secondary "and also can't reach the network"
+# layer is given up. Revert to "no-network" once buildx is available.
+network_mode = "public"
+
+[solution]
+# No solution/solve.sh is shipped: task_card.md SS3 is explicit that this
+# benchmark has "no required ablation list and no suggested method ranking,"
+# and a reference solve script would be exactly that menu. If an oracle/smoke
+# variant is ever added for CI purposes, it must live under a path Harbor
+# never hands to a real agent trial and must be named so no one mistakes it
+# for a sanctioned starting point.

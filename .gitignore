@@ -36,6 +36,7 @@ experiments/predictions/
 experiments/verdicts/
 experiments/time_logs/
 runs/
+!runs/README.md
 results/
 results/time_logs/
 results/**/*.npz
@@ -89,3 +90,12 @@ scoring/adapters/matbench_discovery/upstream/data/**/*.jsonl.gz
 data/mace_mof_0/**
 !data/mace_mof_0/
 !data/mace_mof_0/manifest.json
+
+# Agent research workspace: keep only the README in git; forks, checkpoints,
+# prepared data, and analysis outputs stay local.
+workspace/**
+!workspace/
+!workspace/README.md
+
+# GPU research env: redirected caches/tmp (see GPU_ENV_STATUS.md)
+.research_env/
